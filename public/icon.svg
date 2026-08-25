@@ -1,0 +1,68 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="redGrad" cx="50%" cy="40%" r="65%">
+      <stop offset="0%" stop-color="#FF1124"/>
+      <stop offset="70%" stop-color="#ED0015"/>
+      <stop offset="100%" stop-color="#D60012"/>
+    </radialGradient>
+    
+    <linearGradient id="innerShadowGrad" x1="20%" y1="20%" x2="85%" y2="85%">
+      <stop offset="0%" stop-color="#000000" stop-opacity="0.18"/>
+      <stop offset="40%" stop-color="#000000" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </linearGradient>
+
+    <linearGradient id="foldGrad" x1="30%" y1="40%" x2="90%" y2="80%">
+      <stop offset="0%" stop-color="#E1E6EB"/>
+      <stop offset="50%" stop-color="#CBD5E1"/>
+      <stop offset="100%" stop-color="#94A3B8"/>
+    </linearGradient>
+    
+    <filter id="softGlow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <!-- Red Squircle Base -->
+  <rect x="16" y="16" width="480" height="480" rx="140" fill="url(#redGrad)"/>
+
+  <!-- Logo Mark (Centered Origami Play Button) -->
+  <g filter="url(#softGlow)">
+    <!-- Base White Origami Polygon -->
+    <path d="M 200 135
+             C 186 135 176 146 176 160
+             L 176 340
+             C 176 354 187 365 201 365
+             L 315 365
+             C 345 365 365 342 355 315
+             C 352 308 348 301 342 294
+             L 242 162
+             C 232 145 218 135 200 135 Z"
+          fill="#FFFFFF" />
+
+    <!-- Left Vertical Stem Pill -->
+    <rect x="176" y="145" width="56" height="210" rx="28" fill="#FFFFFF" />
+
+    <!-- Origami Flap Fold (Curved Inner Shading) -->
+    <path d="M 224 220
+             C 224 260 250 320 345 340
+             C 358 335 362 322 354 312
+             L 242 165
+             C 230 152 224 165 224 185 Z"
+          fill="url(#foldGrad)"
+          opacity="0.9" />
+
+    <!-- Top White Cap & Crisp Edge -->
+    <path d="M 202 135
+             C 188 135 176 146 176 160
+             L 176 330
+             L 224 330
+             L 224 180
+             C 224 160 238 145 255 162
+             L 346 295
+             C 353 304 355 312 354 316
+             L 236 150
+             C 226 138 214 135 202 135 Z"
+          fill="#FFFFFF" />
+  </g>
+</svg>
