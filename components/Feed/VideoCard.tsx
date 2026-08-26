@@ -6,6 +6,7 @@ import { Video } from '@/types';
 import { useApp } from '@/context/AppContext';
 import { useDeArrow } from '@/hooks/useDeArrow';
 import { formatCompactViews } from '@/lib/youtube-views';
+import { SmoothThumbnail } from './SmoothThumbnail';
 
 interface VideoCardProps {
   video: Video;
@@ -16,6 +17,8 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
     playVideoById,
     watchLaterIds,
     toggleWatchLater,
+    likedVideoIds,
+    toggleLikeVideo,
     setShareModalVideo,
     openChannel,
   } = useApp();
@@ -23,6 +26,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
   const { title: displayTitle, thumbnailUrl: displayThumbnail, isTitleChanged, isThumbnailChanged } = useDeArrow(video);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isWatchLater = watchLaterIds.includes(video.id);
+  const isLiked = likedVideoIds.includes(video.id);
 
   const formatViews = (views: number): string => {
     return formatCompactViews(views);
@@ -35,26 +39,15 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
     >
       {/* Thumbnail Box */}
       <div
-        className="relative w-full aspect-video rounded-xl overflow-hidden bg-gray-900 mb-3 shadow-xs group-hover:rounded-none group-hover:shadow-md transition-all"
-        onClick={() => playVideoById(video.id)}
+        className="relative w-full aspect-video rounded-xl overflow-hidden bg-gray-200 dark:bg-gray-900 mb-3 shadow-xs group-hover:rounded-none group-hover:shadow-md transition-all"
+        onClick={() => playVideoById(video.id, video)}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <SmoothThumbnail
           src={displayThumbnail || video.thumbnailUrl}
+          fallbackSrc={video.thumbnailUrl}
           alt={displayTitle || video.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          loading="lazy"
-          referrerPolicy="no-referrer"
-          onError={(e) => {
-            const target = e.currentTarget;
-            if (target.src !== video.thumbnailUrl && video.thumbnailUrl) {
-              target.src = video.thumbnailUrl;
-            } else if (video.youtubeId && !target.src.includes('hqdefault')) {
-              target.src = `https://i.ytimg.com/vi/${video.youtubeId}/hqdefault.jpg`;
-            } else {
-              target.src = `https://picsum.photos/seed/${encodeURIComponent(video.title || video.id)}/640/360`;
-            }
-          }}
+          youtubeId={video.youtubeId}
+          className="group-hover:scale-105 transition-transform duration-300"
         />
 
         {/* Play Overlay icon on hover */}
@@ -88,7 +81,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
             id={`card-watch-later-${video.id}`}
             onClick={(e) => {
               e.stopPropagation();
-              toggleWatchLater(video.id);
+              toggleWatchLater(video.id, video);
             }}
             title={isWatchLater ? 'Remove from Watch Later' : 'Watch Later'}
             className={`p-1.5 rounded-md backdrop-blur-md transition-colors ${
@@ -142,7 +135,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
           <h3
             className="text-sm font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 leading-snug group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors cursor-pointer"
             title={displayTitle || video.title}
-            onClick={() => playVideoById(video.id)}
+            onClick={() => playVideoById(video.id, video)}
           >
             {displayTitle || video.title}
           </h3>
@@ -164,7 +157,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
 
           <div
             className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 mt-0.5 cursor-pointer"
-            onClick={() => playVideoById(video.id)}
+            onClick={() => playVideoById(video.id, video)}
           >
             <span>{formatViews(video.views)} views</span>
             <span>•</span>
@@ -194,13 +187,26 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
                 id={`menu-watch-later-${video.id}`}
                 onClick={(e) => {
                   e.stopPropagation();
-                  toggleWatchLater(video.id);
+                  toggleWatchLater(video.id, video);
                   setIsMenuOpen(false);
                 }}
                 className="w-full px-3 py-2 text-left text-xs text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#303030] flex items-center gap-2.5"
               >
                 <Clock className="w-3.5 h-3.5" />
                 <span>{isWatchLater ? 'Remove Watch Later' : 'Save to Watch Later'}</span>
+              </button>
+
+              <button
+                id={`menu-like-${video.id}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleLikeVideo(video.id, video);
+                  setIsMenuOpen(false);
+                }}
+                className="w-full px-3 py-2 text-left text-xs text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#303030] flex items-center gap-2.5"
+              >
+                <Play className="w-3.5 h-3.5" />
+                <span>{isLiked ? 'Unlike Video' : 'Like Video'}</span>
               </button>
 
               <button
