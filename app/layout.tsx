@@ -36,6 +36,22 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                const dark = localStorage.getItem('nexttube_dark_mode');
+                if (dark === 'true' || (dark === null && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                  document.documentElement.classList.add('dark');
+                } else if (dark === 'false') {
+                  document.documentElement.classList.remove('dark');
+                }
+              } catch (e) {}
+            `,
+          }}
+        />
+      </head>
       <body className="bg-white dark:bg-[#0f0f0f] text-gray-900 dark:text-gray-100 antialiased min-h-screen transition-colors font-sans selection:bg-red-500 selection:text-white">
         <AppProvider>
           {children}
