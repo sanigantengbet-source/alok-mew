@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Video, Channel, Comment, User, NotificationItem, PageView, SponsorBlockSettings, SponsorCategory, DeArrowSettings } from '@/types';
 import { INITIAL_VIDEOS, INITIAL_COMMENTS } from '@/data/videos';
 import { INITIAL_CHANNELS } from '@/data/channels';
@@ -20,7 +20,7 @@ interface AppContextType {
 
   videos: Video[];
   shorts: Video[];
-  fetchShorts: (query?: string) => Promise<void>;
+  fetchShorts: (query?: string, isAppend?: boolean) => Promise<void>;
   searchResults: Video[];
   activeVideo: Video | null;
   setActiveVideo: (video: Video | null) => void;
@@ -77,14 +77,18 @@ interface AppContextType {
 
   likedVideoIds: string[];
   dislikedVideoIds: string[];
-  toggleLikeVideo: (videoId: string) => void;
+  toggleLikeVideo: (videoId: string, videoObj?: Video) => void;
   toggleDislikeVideo: (videoId: string) => void;
 
   watchLaterIds: string[];
-  toggleWatchLater: (videoId: string) => void;
+  toggleWatchLater: (videoId: string, videoObj?: Video) => void;
+  removeWatchLater: (videoId: string) => void;
 
   historyVideoIds: string[];
+  removeHistoryItem: (videoId: string) => void;
   clearHistory: () => void;
+
+  savedVideosMap: Record<string, Video>;
 
   comments: Record<string, Comment[]>;
   addComment: (videoId: string, text: string) => void;
@@ -119,6 +123,9 @@ interface AppContextType {
   notifications: NotificationItem[];
   unreadNotificationCount: number;
   markNotificationsAsRead: () => void;
+  markNotificationAsRead: (id: string) => void;
+  removeNotification: (id: string) => void;
+  clearAllNotifications: () => void;
 }
 
 const DEFAULT_USER: User = {
@@ -183,6 +190,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [dislikedVideoIds, setDislikedVideoIds] = useState<string[]>([]);
   const [watchLaterIds, setWatchLaterIds] = useState<string[]>([]);
   const [historyVideoIds, setHistoryVideoIds] = useState<string[]>([]);
+  const [savedVideosMap, setSavedVideosMap] = useState<Record<string, Video>>({});
   const [comments, setComments] = useState<Record<string, Comment[]>>(INITIAL_COMMENTS);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
@@ -193,10 +201,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isFetchingMore, setIsFetchingMore] = useState<boolean>(false);
   const [recommendationPage, setRecommendationPage] = useState<number>(1);
   const [shareModalVideo, setShareModalVideo] = useState<Video | null>(null);
-  const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
+  const [readNotificationIds, setReadNotificationIds] = useState<string[]>([]);
+  const [dismissedNotificationIds, setDismissedNotificationIds] = useState<string[]>([]);
+  const [isHydrated, setIsHydrated] = useState<boolean>(false);
 
   // Initialize and load persistent user data from IndexedDB
-  const [isHydrated, setIsHydrated] = useState<boolean>(false);
 
   useEffect(() => {
     let isCancelled = false;
@@ -211,6 +220,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           savedDislikes,
           savedWatchLater,
           savedHistory,
+          savedSavedVideos,
           savedDark,
           savedSearchHist,
           savedDailyVideos,
@@ -218,10 +228,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ] = await Promise.all([
           getStoredItem<string[]>('subscribedChannelIds', []),
           getStoredItem<Channel[]>('channels', INITIAL_CHANNELS),
-          getStoredItem<string[]>('likedVideoIds', ['v-1', 'v-2']),
+          getStoredItem<string[]>('likedVideoIds', []),
           getStoredItem<string[]>('dislikedVideoIds', []),
-          getStoredItem<string[]>('watchLaterIds', ['v-3', 'v-6']),
-          getStoredItem<string[]>('historyVideoIds', ['v-1', 'v-2', 'v-4']),
+          getStoredItem<string[]>('watchLaterIds', []),
+          getStoredItem<string[]>('historyVideoIds', []),
+          getStoredItem<Record<string, Video>>('savedVideosMap', {}),
           getStoredItem<boolean | null>('isDarkMode', null),
           getStoredItem<string[]>('searchHistory', []),
           getStoredItem<Video[]>('dailyHomeVideos', []),
@@ -251,6 +262,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (Array.isArray(savedDislikes)) setDislikedVideoIds(savedDislikes);
           if (Array.isArray(savedWatchLater)) setWatchLaterIds(savedWatchLater);
           if (Array.isArray(savedHistory)) setHistoryVideoIds(savedHistory);
+          if (savedSavedVideos && typeof savedSavedVideos === 'object') setSavedVideosMap(savedSavedVideos);
           if (typeof savedDark === 'boolean') setIsDarkMode(savedDark);
           if (Array.isArray(savedSearchHist)) {
             // Filter out any leftover initial mock search items
@@ -318,6 +330,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     if (!isHydrated) return;
+    setStoredItem('savedVideosMap', savedVideosMap);
+  }, [savedVideosMap, isHydrated]);
+
+  useEffect(() => {
+    if (!isHydrated) return;
     setStoredItem('isDarkMode', isDarkMode);
   }, [isDarkMode, isHydrated]);
 
@@ -364,13 +381,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   // Fetch real trending YouTube shorts
-  const fetchShorts = useCallback(async (query: string = '#shorts viral trending') => {
+  const fetchShorts = useCallback(async (query?: string, isAppend: boolean = false) => {
     try {
-      const res = await fetch(`/api/youtube/shorts?q=${encodeURIComponent(query)}`);
+      const url = query && query.trim() ? `/api/youtube/shorts?q=${encodeURIComponent(query)}` : '/api/youtube/shorts';
+      const res = await fetch(url);
       if (!res.ok) return;
       const data = await res.json();
       if (Array.isArray(data.results) && data.results.length > 0) {
         setShorts((prev) => {
+          if (!isAppend || prev.length === 0) {
+            return data.results;
+          }
           const existingIds = new Set(prev.map((s) => s.id));
           const newItems = data.results.filter((r: Video) => !existingIds.has(r.id));
           return [...prev, ...newItems];
@@ -387,15 +408,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const loadLiveShorts = async () => {
       try {
-        const res = await fetch(`/api/youtube/shorts?q=${encodeURIComponent('#shorts viral trending')}`);
+        const res = await fetch('/api/youtube/shorts');
         if (!res.ok || isCancelled) return;
         const data = await res.json();
         if (Array.isArray(data.results) && data.results.length > 0 && !isCancelled) {
-          setShorts((prev) => {
-            const existingIds = new Set(prev.map((s) => s.id));
-            const newItems = data.results.filter((r: Video) => !existingIds.has(r.id));
-            return [...prev, ...newItems];
-          });
+          setShorts(data.results);
         }
       } catch (e) {
         console.log('Shorts initial fetch notice:', e);
@@ -622,9 +639,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (trimmed === lastSearchedRef.current) return;
     lastSearchedRef.current = trimmed;
 
+    // Immediately trigger loading state so skeletons show rather than temporary empty state
+    setIsLoadingVideos(true);
+
     const timer = setTimeout(() => {
       searchYouTube(trimmed);
-    }, 150);
+    }, 100);
 
     return () => clearTimeout(timer);
   }, [searchQuery, searchYouTube]);
@@ -635,6 +655,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (selectedCategory === 'All' || searchQuery.trim()) return;
     if (selectedCategory === lastCategoryRef.current) return;
     lastCategoryRef.current = selectedCategory;
+
+    setIsLoadingVideos(true);
 
     let targetQuery = `${selectedCategory} video terbaru`;
     if (selectedCategory === '🔥 Rame & Viral' || selectedCategory.includes('Rame')) {
@@ -658,7 +680,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           });
         }
       })
-      .catch((e) => console.log('Category auto-fill note:', e));
+      .catch((e) => console.log('Category auto-fill note:', e))
+      .finally(() => {
+        setIsLoadingVideos(false);
+      });
   }, [selectedCategory, searchQuery]);
 
   const signInDemoUser = () => {
@@ -679,8 +704,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const playVideoById = (id: string, fallbackVideo?: Video) => {
-    // Search in videos, shorts, searchResults, or use provided fallback
-    let found = videos.find((v) => v.id === id);
+    // Search in savedVideosMap, videos, shorts, searchResults, or use provided fallback
+    let found: Video | undefined = savedVideosMap[id] || videos.find((v) => v.id === id);
     if (!found) {
       found = shorts.find((s) => s.id === id);
     }
@@ -725,7 +750,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setIsMiniPlayerDismissed(false);
       setIsPlayerPlaying(true);
       setCurrentView('watch');
-      // Add to history
+      
+      // Save video object to persistent map
+      setSavedVideosMap((prev) => ({
+        ...prev,
+        [id]: found!,
+      }));
+
+      // Add to history (newest first)
       setHistoryVideoIds((prev) => {
         const filtered = prev.filter((item) => item !== id);
         return [id, ...filtered];
@@ -850,7 +882,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const toggleLikeVideo = (videoId: string) => {
+  const toggleLikeVideo = (videoId: string, videoObj?: Video) => {
     const isLiked = likedVideoIds.includes(videoId);
     if (isLiked) {
       setLikedVideoIds((prev) => prev.filter((id) => id !== videoId));
@@ -858,11 +890,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         prev.map((v) => (v.id === videoId ? { ...v, likes: Math.max(0, v.likes - 1) } : v))
       );
     } else {
-      setLikedVideoIds((prev) => [...prev, videoId]);
+      setLikedVideoIds((prev) => [videoId, ...prev.filter((id) => id !== videoId)]);
       setDislikedVideoIds((prev) => prev.filter((id) => id !== videoId));
       setVideos((prev) =>
         prev.map((v) => (v.id === videoId ? { ...v, likes: v.likes + 1 } : v))
       );
+
+      // Save video object to persistent map
+      const target =
+        videoObj ||
+        (activeVideo && activeVideo.id === videoId ? activeVideo : null) ||
+        videos.find((v) => v.id === videoId) ||
+        shorts.find((s) => s.id === videoId) ||
+        searchResults.find((s) => s.id === videoId) ||
+        savedVideosMap[videoId];
+
+      if (target) {
+        setSavedVideosMap((prev) => ({ ...prev, [videoId]: target }));
+      }
     }
   };
 
@@ -876,13 +921,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const toggleWatchLater = (videoId: string) => {
+  const toggleWatchLater = (videoId: string, videoObj?: Video) => {
     setWatchLaterIds((prev) => {
       if (prev.includes(videoId)) {
         return prev.filter((id) => id !== videoId);
       }
-      return [...prev, videoId];
+      return [videoId, ...prev.filter((id) => id !== videoId)];
     });
+
+    const target =
+      videoObj ||
+      (activeVideo && activeVideo.id === videoId ? activeVideo : null) ||
+      videos.find((v) => v.id === videoId) ||
+      shorts.find((s) => s.id === videoId) ||
+      searchResults.find((s) => s.id === videoId) ||
+      savedVideosMap[videoId];
+
+    if (target) {
+      setSavedVideosMap((prev) => ({ ...prev, [videoId]: target }));
+    }
+  };
+
+  const removeWatchLater = (videoId: string) => {
+    setWatchLaterIds((prev) => prev.filter((id) => id !== videoId));
+  };
+
+  const removeHistoryItem = (videoId: string) => {
+    setHistoryVideoIds((prev) => prev.filter((id) => id !== videoId));
   };
 
   const clearHistory = () => {
@@ -1021,11 +1086,71 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [currentView, previousView]);
 
+  // Compute dynamic notifications from subscribed channels
+  const notifications: NotificationItem[] = useMemo(() => {
+    if (subscribedChannelIds.length === 0) {
+      return [];
+    }
+
+    const allContent = [...videos, ...shorts, ...Object.values(savedVideosMap)];
+    const subscribedContent = allContent.filter((item) => {
+      if (!item || !item.id) return false;
+      const notifId = `notif-${item.id}`;
+      if (dismissedNotificationIds.includes(notifId) || dismissedNotificationIds.includes(item.id)) {
+        return false;
+      }
+      const chId = item.channelId;
+      const chTitle = item.channelTitle?.toLowerCase();
+      return subscribedChannelIds.some(
+        (subId) => subId === chId || (chTitle && subId.toLowerCase() === chTitle)
+      );
+    });
+
+    const readSet = new Set(readNotificationIds);
+
+    return subscribedContent.slice(0, 25).map((item) => {
+      const isVT = item.duration === 'Shorts' || item.category === 'Shorts' || item.tags?.includes('Shorts');
+      const notifId = `notif-${item.id}`;
+      return {
+        id: notifId,
+        title: isVT
+          ? `${item.channelTitle} mengupload VT (Shorts) baru: "${item.title}"`
+          : `${item.channelTitle} mengupload video baru: "${item.title}"`,
+        channelName: item.channelTitle,
+        channelAvatar: item.channelAvatar,
+        channelId: item.channelId,
+        timeAgo: item.uploadedAt || 'Baru saja',
+        thumbnail: item.thumbnailUrl,
+        isRead: readSet.has(notifId) || readSet.has(item.id),
+        videoId: item.id,
+        type: isVT ? ('shorts' as const) : ('video' as const),
+      };
+    });
+  }, [subscribedChannelIds, videos, shorts, savedVideosMap, readNotificationIds, dismissedNotificationIds]);
+
   const unreadNotificationCount = notifications.filter((n) => !n.isRead).length;
 
-  const markNotificationsAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-  };
+  const markNotificationsAsRead = useCallback(() => {
+    setReadNotificationIds((prev) => {
+      const currentIds = notifications.map((n) => n.id);
+      return Array.from(new Set([...prev, ...currentIds]));
+    });
+  }, [notifications]);
+
+  const markNotificationAsRead = useCallback((id: string) => {
+    setReadNotificationIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  }, []);
+
+  const removeNotification = useCallback((id: string) => {
+    setDismissedNotificationIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  }, []);
+
+  const clearAllNotifications = useCallback(() => {
+    setDismissedNotificationIds((prev) => {
+      const currentIds = notifications.map((n) => n.id);
+      return Array.from(new Set([...prev, ...currentIds]));
+    });
+  }, [notifications]);
 
   return (
     <AppContext.Provider
@@ -1082,8 +1207,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleDislikeVideo,
         watchLaterIds,
         toggleWatchLater,
+        removeWatchLater,
         historyVideoIds,
+        removeHistoryItem,
         clearHistory,
+        savedVideosMap,
         comments,
         addComment,
         toggleCommentLike,
@@ -1109,6 +1237,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         notifications,
         unreadNotificationCount,
         markNotificationsAsRead,
+        markNotificationAsRead,
+        removeNotification,
+        clearAllNotifications,
         sponsorBlockSettings,
         setSponsorBlockSettings,
         updateSponsorBlockSettings,
