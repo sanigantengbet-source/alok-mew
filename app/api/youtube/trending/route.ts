@@ -97,10 +97,10 @@ function getRandomQueries(explicitCategory?: string, page: number = 1): { catego
   return queries.sort(() => 0.5 - Math.random());
 }
 
-// Helper to scrape HTML for fast results
-async function searchHtmlScraper(query: string, category: string, limit = 8): Promise<any[]> {
+// Helper to scrape YouTube HTML for fast, rich results without library crashes
+async function searchHtmlScraper(query: string, category: string, limit = 12): Promise<any[]> {
   try {
-    const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&sp=CAI%253D`; // sp=CAI%3D sorts by upload date/relevance
+    const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
     const res = await fetch(searchUrl, {
       headers: {
         'User-Agent':
@@ -142,6 +142,7 @@ async function searchHtmlScraper(query: string, category: string, limit = 8): Pr
         'YouTube Creator';
 
       const channelId =
+        v.ownerText?.runs?.[0]?.navigationEndpoint?.browseEndpoint?.browseId ||
         v.shortBylineText?.runs?.[0]?.navigationEndpoint?.browseEndpoint?.browseId ||
         `c-${videoId}`;
 
@@ -243,12 +244,26 @@ export async function GET(req: NextRequest) {
     // Parallel fetch from all topic queries to construct a 40-60+ video recommendations feed
     const queryPromises = activeQueries.map(async ({ category, query }) => {
       // 1. First try fast HTML scraper
-      const scraped = await searchHtmlScraper(query, category, 8);
+      const scraped = await searchHtmlScraper(query, category, 12);
       if (scraped.length >= 4) {
         return scraped;
       }
 
-      // 2. Supplement or fallback with youtube-sr
+      // 2. Secondary HTML search with alternative wording
+      const altScraped = await searchHtmlScraper(`${query} video`, category, 10);
+      if (altScraped.length > 0) {
+        const combined = [...scraped];
+        const seen = new Set(combined.map((v) => v.id));
+        for (const v of altScraped) {
+          if (!seen.has(v.id)) {
+            seen.add(v.id);
+            combined.push(v);
+          }
+        }
+        if (combined.length >= 4) return combined;
+      }
+
+      // 3. Supplement with youtube-sr if available (silently catching any schema errors)
       try {
         const srList = await YouTube.search(query, {
           limit: 10,
@@ -301,8 +316,7 @@ export async function GET(req: NextRequest) {
           }
         }
         return combined;
-      } catch (err) {
-        console.warn(`Error querying topic "${query}":`, err);
+      } catch {
         return scraped;
       }
     });
@@ -329,39 +343,14 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // If still sparse, add general trending fallback
+    // If still sparse, add general trending fallback via robust HTML scraper
     if (interleaved.length < 15) {
-      try {
-        const extraSr = await YouTube.search('trending viral indonesia terkini', { limit: 25, type: 'video' });
-        for (const item of extraSr) {
-          if (!item || !item.id) continue;
-          const id = `yt-${item.id}`;
-          if (!seenIds.has(id)) {
-            seenIds.add(id);
-            interleaved.push({
-              id,
-              youtubeId: item.id,
-              title: item.title || 'Trending Video',
-              description: item.description || 'Rekomendasi video viral di NextTube',
-              channelTitle: item.channel?.name || 'YouTube Creator',
-              channelId: item.channel?.id || `c-${item.id}`,
-              channelAvatar: item.channel?.icon?.url || `https://picsum.photos/seed/${encodeURIComponent(item.channel?.name || item.id)}/100/100`,
-              subscriberCount: item.channel?.subscribers || '500K+',
-              verified: Boolean(item.channel?.verified),
-              thumbnailUrl: item.thumbnail?.url || `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`,
-              views: typeof item.views === 'number' ? item.views : 250000,
-              likes: Math.round((item.views || 250000) * 0.04) || 8000,
-              dislikes: 15,
-              uploadedAt: item.uploadedAt || '2 minggu yang lalu',
-              duration: item.durationFormatted || '12:00',
-              category: 'Trending',
-              tags: ['Trending', 'Viral', 'YouTube'],
-              commentsCount: 320,
-            });
-          }
+      const fallbackList = await searchHtmlScraper('trending viral indonesia hari ini', 'Trending', 25);
+      for (const video of fallbackList) {
+        if (!seenIds.has(video.id)) {
+          seenIds.add(video.id);
+          interleaved.push(video);
         }
-      } catch (err) {
-        console.warn('Fallback trending query notice:', err);
       }
     }
 
