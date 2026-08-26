@@ -458,7 +458,7 @@ export const WatchPage: React.FC = () => {
               <div className="flex items-center rounded-full bg-gray-100 dark:bg-[#272727] p-0.5 border border-gray-200 dark:border-[#383838]">
                 <button
                   id="watch-like-btn"
-                  onClick={() => toggleLikeVideo(activeVideo.id)}
+                  onClick={() => toggleLikeVideo(activeVideo.id, activeVideo)}
                   className={`flex items-center gap-2 px-3.5 py-1.5 rounded-l-full text-xs font-semibold transition-colors hover:bg-gray-200 dark:hover:bg-[#333] ${
                     isLiked ? 'text-blue-600 dark:text-blue-400' : 'text-gray-800 dark:text-gray-200'
                   }`}
@@ -491,7 +491,7 @@ export const WatchPage: React.FC = () => {
               {/* Save / Watch Later */}
               <button
                 id="watch-save-btn"
-                onClick={() => toggleWatchLater(activeVideo.id)}
+                onClick={() => toggleWatchLater(activeVideo.id, activeVideo)}
                 className={`flex items-center gap-2 px-3.5 py-2 rounded-full border border-gray-200 dark:border-[#383838] text-xs font-semibold transition-colors ${
                   isSaved
                     ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border-blue-200'
