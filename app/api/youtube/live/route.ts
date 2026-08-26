@@ -52,6 +52,7 @@ async function searchLiveReplaysViaHTML(query: string, limit = 20) {
         const channelTitle = video.ownerText?.runs?.[0]?.text || query;
         const channelId =
           video.ownerText?.runs?.[0]?.navigationEndpoint?.browseEndpoint?.browseId ||
+          video.shortBylineText?.runs?.[0]?.navigationEndpoint?.browseEndpoint?.browseId ||
           `c-${video.videoId}`;
         const channelAvatar =
           video.channelThumbnailSupportedRenderers?.channelThumbnailWithLinkRenderer?.thumbnail
