@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { VideoCard } from './VideoCard';
 import { VideoCardSkeleton } from './VideoCardSkeleton';
+import { ShortsShelf } from './ShortsShelf';
 import { useApp } from '@/context/AppContext';
 import { Video } from '@/types';
 import { filterFreshVideos } from '@/lib/video-freshness';
@@ -35,6 +36,7 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
 }) => {
   const {
     videos,
+    shorts,
     searchResults,
     currentView,
     selectedCategory,
@@ -42,6 +44,7 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
     likedVideoIds,
     watchLaterIds,
     historyVideoIds,
+    savedVideosMap,
     subscribedChannelIds,
     clearHistory,
     user,
@@ -59,15 +62,49 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
   const [directUrlInput, setDirectUrlInput] = useState<string>('');
   const [isDirectLoading, setIsDirectLoading] = useState<boolean>(false);
 
-  // Show skeletons only when truly loading without existing content to prevent blinking
-  const isLoading = propLoading !== undefined ? propLoading : (isLoadingVideos && videos.length === 0);
+  // Video resolver for saved lists (history, watch later, liked)
+  const resolveVideo = (id: string): Video | undefined => {
+    if (savedVideosMap && savedVideosMap[id]) return savedVideosMap[id];
+    const inVideos = videos.find((v) => v.id === id);
+    if (inVideos) return inVideos;
+    const inShorts = shorts?.find((s) => s.id === id);
+    if (inShorts) return inShorts;
+    const inSearch = searchResults?.find((s) => s.id === id);
+    if (inSearch) return inSearch;
+    if (id.startsWith('yt-')) {
+      const rawId = id.replace(/^yt-/, '');
+      return {
+        id,
+        youtubeId: rawId,
+        title: 'YouTube Video',
+        description: 'Watch video seamlessly on NextTube.',
+        channelTitle: 'YouTube Creator',
+        channelId: `c-${rawId}`,
+        channelAvatar: `https://picsum.photos/seed/${rawId}/100/100`,
+        subscriberCount: '100K+',
+        verified: true,
+        thumbnailUrl: `https://i.ytimg.com/vi/${rawId}/hqdefault.jpg`,
+        views: 25000,
+        likes: 1200,
+        dislikes: 10,
+        uploadedAt: 'Recently',
+        duration: '10:00',
+        category: 'YouTube',
+        tags: ['YouTube', 'Video'],
+        commentsCount: 20,
+      };
+    }
+    return undefined;
+  };
 
   // Filter logic
   let displayedVideos: Video[] = [...videos];
   let pageTitle = '';
   let pageIcon = null;
 
-  if (searchQuery.trim()) {
+  const isSearchActive = Boolean(searchQuery.trim());
+
+  if (isSearchActive) {
     const q = searchQuery.toLowerCase();
 
     // Combine searchResults from YouTube API with local matches, avoiding duplicates
@@ -133,16 +170,20 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
     pageIcon = <Tv className="w-6 h-6 text-blue-500" />;
   } else if (currentView === 'history') {
     displayedVideos = historyVideoIds
-      .map((id) => videos.find((v) => v.id === id))
-      .filter((v): v is Video => v !== undefined);
+      .map(resolveVideo)
+      .filter((v): v is Video => Boolean(v));
     pageTitle = 'Watch History';
     pageIcon = <History className="w-6 h-6 text-amber-500" />;
   } else if (currentView === 'watchLater') {
-    displayedVideos = displayedVideos.filter((v) => watchLaterIds.includes(v.id));
+    displayedVideos = watchLaterIds
+      .map(resolveVideo)
+      .filter((v): v is Video => Boolean(v));
     pageTitle = 'Watch Later';
     pageIcon = <Clock className="w-6 h-6 text-emerald-500" />;
   } else if (currentView === 'liked') {
-    displayedVideos = displayedVideos.filter((v) => likedVideoIds.includes(v.id));
+    displayedVideos = likedVideoIds
+      .map(resolveVideo)
+      .filter((v): v is Video => Boolean(v));
     pageTitle = 'Liked Videos';
     pageIcon = <ThumbsUp className="w-6 h-6 text-rose-500" />;
   } else if (currentView === 'yourVideos') {
@@ -206,6 +247,12 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
     }
   }
 
+  // Prevent false empty state flashes:
+  // Skeletons are shown when loading is active, or while searching/filtering if content is still being fetched
+  const shouldShowLoading = propLoading !== undefined
+    ? propLoading
+    : (isLoadingVideos && (displayedVideos.length === 0 || isSearchActive));
+
   const handleDirectPlay = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!directUrlInput.trim()) return;
@@ -227,7 +274,14 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
                 {pageTitle}
               </h1>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                {displayedVideos.length} {displayedVideos.length === 1 ? 'video' : 'videos'} found
+                {shouldShowLoading ? (
+                  <span className="inline-flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-medium">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    {isSearchActive ? `Mencari video untuk "${searchQuery}"...` : 'Memuat video...'}
+                  </span>
+                ) : (
+                  `${displayedVideos.length} ${displayedVideos.length === 1 ? 'video' : 'videos'} ditemukan`
+                )}
               </p>
             </div>
           </div>
@@ -257,7 +311,7 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
       )}
 
       {/* Videos Grid or Skeleton Loading State */}
-      {isLoading ? (
+      {shouldShowLoading ? (
         <div
           id="video-grid-skeletons"
           aria-label="Loading YouTube videos..."
@@ -269,14 +323,43 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
         </div>
       ) : displayedVideos.length > 0 ? (
         <div className="flex flex-col gap-8">
-          <div
-            id="video-grid-list"
-            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-4 gap-y-8 animate-in fade-in duration-150"
-          >
-            {displayedVideos.map((video, index) => (
-              <VideoCard key={`grid-${video.id}-${index}`} video={video} />
-            ))}
-          </div>
+          {currentView === 'home' && !searchQuery && shorts && shorts.length > 0 ? (
+            <div className="flex flex-col gap-6">
+              {/* Top batch of home videos */}
+              <div
+                id="video-grid-list-top"
+                className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-4 gap-y-8 animate-in fade-in duration-150"
+              >
+                {displayedVideos.slice(0, Math.min(displayedVideos.length, 6)).map((video, index) => (
+                  <VideoCard key={`grid-top-${video.id}-${index}`} video={video} />
+                ))}
+              </div>
+
+              {/* YouTube Shorts Shelf on Home (like real YouTube) */}
+              <ShortsShelf shorts={shorts} />
+
+              {/* Remaining home videos */}
+              {displayedVideos.length > 6 && (
+                <div
+                  id="video-grid-list-bottom"
+                  className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-4 gap-y-8 animate-in fade-in duration-150"
+                >
+                  {displayedVideos.slice(6).map((video, index) => (
+                    <VideoCard key={`grid-bottom-${video.id}-${index + 6}`} video={video} />
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div
+              id="video-grid-list"
+              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-4 gap-y-8 animate-in fade-in duration-150"
+            >
+              {displayedVideos.map((video, index) => (
+                <VideoCard key={`grid-${video.id}-${index}`} video={video} />
+              ))}
+            </div>
+          )}
 
           {/* Load More Recommendations / Infinite Scroll trigger for Home View */}
           {(currentView === 'home' || currentView === 'trending') && !searchQuery && (
