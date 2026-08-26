@@ -63,6 +63,7 @@ async function scrapeRelatedFromWatchPage(videoId: string) {
         'YouTube Creator';
 
       const channelId =
+        v.ownerText?.runs?.[0]?.navigationEndpoint?.browseEndpoint?.browseId ||
         v.shortBylineText?.runs?.[0]?.navigationEndpoint?.browseEndpoint?.browseId ||
         `c-${vId}`;
 
@@ -175,7 +176,10 @@ async function searchRelatedViaHTML(query: string, currentVideoId: string, limit
             title,
             description: `Watch "${title}" by ${channelTitle} on NextTube.`,
             channelTitle,
-            channelId: v.shortBylineText?.runs?.[0]?.navigationEndpoint?.browseEndpoint?.browseId || `c-${vId}`,
+            channelId:
+              v.ownerText?.runs?.[0]?.navigationEndpoint?.browseEndpoint?.browseId ||
+              v.shortBylineText?.runs?.[0]?.navigationEndpoint?.browseEndpoint?.browseId ||
+              `c-${vId}`,
             channelAvatar:
               v.channelThumbnailSupportedRenderers?.channelThumbnailWithLinkRenderer?.thumbnail?.thumbnails?.[0]?.url ||
               `https://picsum.photos/seed/${encodeURIComponent(channelTitle)}/100/100`,
