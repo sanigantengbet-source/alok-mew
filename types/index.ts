@@ -71,10 +71,12 @@ export interface NotificationItem {
   title: string;
   channelName: string;
   channelAvatar: string;
+  channelId?: string;
   timeAgo: string;
   thumbnail: string;
   isRead: boolean;
   videoId: string;
+  type?: 'video' | 'shorts' | 'upload';
 }
 
 export type PageView =
