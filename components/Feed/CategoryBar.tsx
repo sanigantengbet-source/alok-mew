@@ -21,7 +21,7 @@ export const CategoryBar: React.FC = () => {
     setSearchQuery('');
     setActiveVideo(null);
     if (category !== selectedCategory) {
-      fetchTrendingVideos(true, category);
+      fetchTrendingVideos(false, category);
     }
   };
 
