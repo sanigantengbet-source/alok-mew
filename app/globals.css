@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Hide scrollbar lines universally across all layouts, drawers, sidebars, and containers */
 *,
 *::before,
@@ -18,4 +20,9 @@ html,
 body {
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
+}
+
+/* Base theme transitions */
+body {
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
