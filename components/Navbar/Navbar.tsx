@@ -23,9 +23,13 @@ import {
   ArrowLeft,
   Clock,
   Trash2,
+  Check,
+  Flame,
+  Smartphone,
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { NextTubeLogo } from './NextTubeLogo';
+import { SmoothThumbnail } from '@/components/Feed/SmoothThumbnail';
 
 export const Navbar: React.FC = () => {
   const {
@@ -52,6 +56,10 @@ export const Navbar: React.FC = () => {
     notifications,
     unreadNotificationCount,
     markNotificationsAsRead,
+    markNotificationAsRead,
+    removeNotification,
+    clearAllNotifications,
+    subscribedChannelIds,
     playVideoById,
   } = useApp();
 
@@ -497,64 +505,172 @@ export const Navbar: React.FC = () => {
             id="navbar-notifications-btn"
             onClick={() => {
               setIsNotificationsOpen(!isNotificationsOpen);
-              if (!isNotificationsOpen) markNotificationsAsRead();
             }}
-            title="Notifications"
-            className="p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#272727] text-gray-700 dark:text-gray-200 transition-colors relative touch-manipulation"
+            title="Notifikasi Channel Disubscribe"
+            className="p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#272727] text-gray-700 dark:text-gray-200 transition-colors relative touch-manipulation cursor-pointer"
           >
             <Bell className="w-5 h-5" />
             {unreadNotificationCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 min-w-[16px] h-4 px-1 bg-red-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">
-                {unreadNotificationCount}
+              <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 bg-red-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-md animate-pulse">
+                {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
               </span>
             )}
           </button>
 
           {isNotificationsOpen && (
-            <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-[#212121] rounded-2xl shadow-2xl border border-gray-200 dark:border-[#383838] py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
-              <div className="px-4 py-2.5 border-b border-gray-200 dark:border-[#333] flex items-center justify-between">
-                <span className="font-bold text-sm text-gray-900 dark:text-white">Notifications</span>
-                <span className="text-xs text-gray-500 dark:text-gray-400">{notifications.length} recent</span>
+            <div className="absolute right-0 mt-2 w-84 sm:w-96 bg-white dark:bg-[#212121] rounded-2xl shadow-2xl border border-gray-200 dark:border-[#383838] py-2 z-50 animate-in fade-in zoom-in-95 duration-150 overflow-hidden">
+              {/* Header */}
+              <div className="px-4 py-3 border-b border-gray-100 dark:border-[#303030] flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-sm text-gray-900 dark:text-white">
+                    Notifikasi
+                  </span>
+                  {unreadNotificationCount > 0 ? (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400">
+                      {unreadNotificationCount} baru
+                    </span>
+                  ) : notifications.length > 0 ? (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 dark:bg-[#303030] text-gray-600 dark:text-gray-400">
+                      {notifications.length}
+                    </span>
+                  ) : null}
+                </div>
+
+                {notifications.length > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      id="notif-mark-all-read-btn"
+                      onClick={markNotificationsAsRead}
+                      title="Tandai semua sudah dibaca"
+                      className="p-1 text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-md hover:bg-gray-100 dark:hover:bg-[#2d2d2d] transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span className="text-[11px]">Dibaca</span>
+                    </button>
+                    <button
+                      id="notif-clear-all-btn"
+                      onClick={clearAllNotifications}
+                      title="Hapus semua notifikasi"
+                      className="p-1 text-xs text-gray-400 hover:text-red-500 rounded-md hover:bg-gray-100 dark:hover:bg-[#2d2d2d] transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
-              <div className="max-h-80 overflow-y-auto divide-y divide-gray-100 dark:divide-[#2c2c2c]">
-                {notifications.map((notif) => (
-                  <button
-                    key={notif.id}
-                    id={`notif-item-${notif.id}`}
-                    onClick={() => {
-                      if (notif.videoId) {
-                        playVideoById(notif.videoId);
-                      }
-                      setIsNotificationsOpen(false);
-                    }}
-                    className={`w-full p-3 flex items-start gap-3 hover:bg-gray-50 dark:hover:bg-[#2a2a2a] text-left transition-colors ${
-                      !notif.isRead ? 'bg-blue-50/50 dark:bg-blue-950/20' : ''
-                    }`}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={notif.channelAvatar}
-                      alt="Avatar"
-                      className="w-9 h-9 rounded-full object-cover shrink-0 mt-0.5"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-gray-900 dark:text-gray-100 font-medium leading-snug line-clamp-2">
-                        {notif.title}
-                      </p>
-                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
-                        {notif.timeAgo}
-                      </p>
+
+              {/* Body */}
+              <div className="max-h-96 overflow-y-auto divide-y divide-gray-100 dark:divide-[#282828] scrollbar-none">
+                {notifications.length === 0 ? (
+                  <div className="px-6 py-10 text-center flex flex-col items-center">
+                    <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-[#2a2a2a] flex items-center justify-center text-gray-400 dark:text-gray-500 mb-3">
+                      <Bell className="w-6 h-6" />
                     </div>
-                    {notif.thumbnail && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={notif.thumbnail}
-                        alt="Video Thumbnail"
-                        className="w-14 h-9 rounded-md object-cover shrink-0"
-                      />
-                    )}
-                  </button>
-                ))}
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
+                      Belum Ada Notifikasi
+                    </h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed max-w-[240px] mb-4">
+                      Notifikasi akan otomatis muncul saat channel yang kamu subscribe mengupload video atau VT (Shorts) baru.
+                    </p>
+                    <button
+                      id="notif-explore-subs-btn"
+                      onClick={() => {
+                        setCurrentView('subscriptions');
+                        setIsNotificationsOpen(false);
+                      }}
+                      className="px-4 py-1.5 text-xs font-semibold rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors shadow-sm cursor-pointer"
+                    >
+                      Jelajahi Subscriptions
+                    </button>
+                  </div>
+                ) : (
+                  notifications.map((notif) => (
+                    <div
+                      key={notif.id}
+                      id={`notif-item-${notif.id}`}
+                      onClick={() => {
+                        markNotificationAsRead(notif.id);
+                        if (notif.videoId) {
+                          playVideoById(notif.videoId);
+                        }
+                        setIsNotificationsOpen(false);
+                      }}
+                      className={`group w-full p-3 flex items-start gap-3 hover:bg-gray-50 dark:hover:bg-[#2a2a2a] text-left transition-colors cursor-pointer relative ${
+                        !notif.isRead ? 'bg-blue-50/60 dark:bg-blue-950/20' : ''
+                      }`}
+                    >
+                      {/* Avatar */}
+                      <div className="relative shrink-0 mt-0.5">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={notif.channelAvatar}
+                          alt={notif.channelName}
+                          className="w-10 h-10 rounded-full object-cover border border-gray-200 dark:border-[#333]"
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            e.currentTarget.src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(notif.channelName || 'YT')}`;
+                          }}
+                        />
+                        {!notif.isRead && (
+                          <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-blue-600 border-2 border-white dark:border-[#212121]" />
+                        )}
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0 pr-1">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className="text-[11px] font-bold text-gray-800 dark:text-gray-200 truncate">
+                            {notif.channelName}
+                          </span>
+                          {notif.type === 'shorts' ? (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400 uppercase tracking-wide">
+                              VT Baru
+                            </span>
+                          ) : (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-gray-100 dark:bg-[#333] text-gray-600 dark:text-gray-300">
+                              Video
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="text-xs text-gray-900 dark:text-gray-100 line-clamp-2 leading-snug font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                          {notif.title}
+                        </p>
+
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                            {notif.timeAgo}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Video Thumbnail */}
+                      {notif.thumbnail && (
+                        <div className="w-16 h-10 rounded-md overflow-hidden shrink-0 bg-neutral-900 border border-gray-100 dark:border-[#303030]">
+                          <SmoothThumbnail
+                            src={notif.thumbnail}
+                            alt="Video Thumbnail"
+                            aspectRatioClass="aspect-video"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+
+                      {/* Single Dismiss Button */}
+                      <button
+                        id={`dismiss-notif-${notif.id}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeNotification(notif.id);
+                        }}
+                        title="Hapus notifikasi"
+                        className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 rounded-md hover:bg-gray-200 dark:hover:bg-[#383838] transition-all absolute top-2 right-2 cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}
@@ -564,10 +680,14 @@ export const Navbar: React.FC = () => {
         <button
           id="navbar-theme-toggle-btn"
           onClick={toggleDarkMode}
-          title={isDarkMode ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-          className="p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#272727] text-gray-700 dark:text-gray-200 transition-colors touch-manipulation"
+          title={isDarkMode ? 'Beralih ke Tema Terang (Light Mode)' : 'Beralih ke Tema Gelap (Dark Mode)'}
+          className="p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#272727] text-gray-700 dark:text-gray-200 transition-all touch-manipulation cursor-pointer group active:scale-95"
         >
-          {isDarkMode ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5" />}
+          {isDarkMode ? (
+            <Sun className="w-5 h-5 text-amber-400 group-hover:rotate-45 transition-transform duration-300" />
+          ) : (
+            <Moon className="w-5 h-5 text-gray-700 dark:text-gray-200 group-hover:-rotate-12 transition-transform duration-300" />
+          )}
         </button>
 
         {/* Settings Button */}
@@ -577,8 +697,8 @@ export const Navbar: React.FC = () => {
             setCurrentView('settings');
             setActiveVideo(null);
           }}
-          title="Settings & Credits"
-          className="p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#272727] text-gray-700 dark:text-gray-200 transition-colors touch-manipulation"
+          title="Pengaturan & SponsorBlock"
+          className="p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#272727] text-gray-700 dark:text-gray-200 transition-colors touch-manipulation cursor-pointer"
         >
           <Settings className="w-5 h-5" />
         </button>
