@@ -38,7 +38,13 @@ export default function Home() {
         <Sidebar />
 
         {/* Dynamic Content Body */}
-        <main className="flex-1 overflow-y-auto min-w-0 pb-16 md:pb-0">
+        <main
+          className={`flex-1 min-w-0 ${
+            isShortsMode
+              ? 'overflow-hidden pb-13 md:pb-0 h-[calc(100dvh-3.5rem)]'
+              : 'overflow-y-auto pb-16 md:pb-0'
+          }`}
+        >
           {isWatchMode ? (
             <WatchPage />
           ) : isShortsMode ? (
