@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import YouTube from 'youtube-sr';
 import { parseYouTubeViews } from '@/lib/youtube-views';
 import { safeFetchYouTube } from '@/lib/youtube-fetch';
+import { searchViaInnerTube, searchViaInvidious } from '@/lib/youtube-innertube';
+import { INITIAL_VIDEOS } from '@/data/videos';
+import { Video } from '@/types';
 
 // Helper to extract YouTube video ID if user searched a URL directly
 function extractYouTubeVideoId(input: string): string | null {
@@ -28,14 +31,14 @@ function extractYouTubeVideoId(input: string): string | null {
   return null;
 }
 
-// Memory cache for recent searches (TTL 2 minutes)
+// Memory cache for recent searches (TTL 5 minutes for extreme high performance)
 const searchCache = new Map<string, { timestamp: number; results: any[] }>();
 
 // HTML scraper parser to extract full ytInitialData search results
-async function searchViaYouTubeHTML(query: string, limit = 50) {
+async function searchViaYouTubeHTML(query: string, limit = 40) {
   try {
     const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&sp=EgIQAQ%253D%253D`;
-    const html = await safeFetchYouTube(searchUrl, 2, 6000);
+    const html = await safeFetchYouTube(searchUrl, 2, 4500);
     if (!html) return [];
 
     const jsonMatch =
@@ -130,10 +133,35 @@ async function searchViaYouTubeHTML(query: string, limit = 50) {
     }
 
     return results;
-  } catch (err) {
-    console.warn('YouTube HTML search parser error:', err);
+  } catch {
     return [];
   }
+}
+
+// Fallback search inside curated dataset
+function searchCuratedVideos(query: string): Video[] {
+  const q = query.toLowerCase().trim();
+  const words = q.split(/\s+/).filter(Boolean);
+
+  return INITIAL_VIDEOS.filter((v) => {
+    const title = v.title.toLowerCase();
+    const desc = v.description.toLowerCase();
+    const chan = v.channelTitle.toLowerCase();
+    const cat = v.category.toLowerCase();
+    const tags = v.tags.map((t) => t.toLowerCase());
+
+    if (title.includes(q) || desc.includes(q) || chan.includes(q) || cat.includes(q) || tags.some((t) => t.includes(q))) {
+      return true;
+    }
+
+    return words.some(
+      (w) =>
+        title.includes(w) ||
+        chan.includes(w) ||
+        tags.some((t) => t.includes(w)) ||
+        desc.includes(w)
+    );
+  });
 }
 
 export async function GET(req: NextRequest) {
@@ -158,7 +186,7 @@ export async function GET(req: NextRequest) {
       channelTitle: 'YouTube Creator',
       channelId: `c-${directVideoId}`,
       channelAvatar: `https://picsum.photos/seed/${directVideoId}/100/100`,
-      subscriberCount: '100K',
+      subscriberCount: '100K+',
       verified: true,
       thumbnailUrl: `https://i.ytimg.com/vi/${directVideoId}/hqdefault.jpg`,
       views: 125000,
@@ -180,37 +208,45 @@ export async function GET(req: NextRequest) {
         directResult.duration = v.durationFormatted || directResult.duration;
         directResult.views = typeof v.views === 'number' ? v.views : directResult.views;
       }
-    } catch (e) {
-      console.log('Direct video info enrichment notice:', e);
-    }
+    } catch {}
 
-    return NextResponse.json({ results: [directResult] });
+    return NextResponse.json(
+      { results: [directResult] },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
+        },
+      }
+    );
   }
 
-  // Check cache
+  // Check L1 In-Memory Cache (TTL: 5 minutes)
   const cacheKey = cleanQuery.toLowerCase();
   const cached = searchCache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < 90 * 1000 && cached.results.length >= 10) {
-    return NextResponse.json({ results: cached.results, count: cached.results.length, cached: true });
+  if (cached && Date.now() - cached.timestamp < 5 * 60 * 1000 && cached.results.length >= 6) {
+    return NextResponse.json(
+      { results: cached.results, count: cached.results.length, cached: true },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=86400',
+        },
+      }
+    );
   }
 
-  // 2. Perform parallel search using HTML scraper + YouTube API
+  // 2. Multi-tier Parallel Search Execution
   let combinedResults: any[] = [];
   const seenIds = new Set<string>();
 
   try {
-    const [htmlResults, srResults] = await Promise.allSettled([
+    // Launch Tier 1 (InnerTube API) and Tier 2 (HTML scraper) simultaneously
+    const [innerTubeRes, htmlRes] = await Promise.allSettled([
+      searchViaInnerTube(cleanQuery, limit),
       searchViaYouTubeHTML(cleanQuery, limit),
-      YouTube.search(cleanQuery, {
-        limit: Math.min(limit, 50),
-        type: 'video',
-        safeSearch: false,
-      }).catch(() => []),
     ]);
 
-    // Add HTML scraper results first (they are rich in exact real order)
-    if (htmlResults.status === 'fulfilled' && Array.isArray(htmlResults.value)) {
-      for (const item of htmlResults.value) {
+    if (innerTubeRes.status === 'fulfilled' && Array.isArray(innerTubeRes.value)) {
+      for (const item of innerTubeRes.value) {
         if (!seenIds.has(item.id)) {
           seenIds.add(item.id);
           combinedResults.push(item);
@@ -218,47 +254,83 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Supplement with youtube-sr results
-    if (srResults.status === 'fulfilled' && Array.isArray(srResults.value)) {
-      for (const item of srResults.value) {
-        if (!item || !item.id || !item.title) continue;
-        const id = `yt-${item.id}`;
-        if (!seenIds.has(id)) {
-          seenIds.add(id);
-          const thumb =
-            item.thumbnail?.url ||
-            `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`;
+    if (htmlRes.status === 'fulfilled' && Array.isArray(htmlRes.value)) {
+      for (const item of htmlRes.value) {
+        if (!seenIds.has(item.id)) {
+          seenIds.add(item.id);
+          combinedResults.push(item);
+        }
+      }
+    }
 
-          combinedResults.push({
-            id,
-            youtubeId: item.id,
-            title: item.title,
-            description: item.description || `Tonton "${item.title}" oleh ${item.channel?.name || 'kreator'} di NextTube.`,
-            channelTitle: item.channel?.name || 'YouTube Creator',
-            channelId: item.channel?.id || `c-${item.channel?.name?.replace(/\s+/g, '-').toLowerCase() || item.id}`,
-            channelAvatar:
-              item.channel?.icon?.url ||
-              `https://picsum.photos/seed/${encodeURIComponent(item.channel?.name || item.id || 'creator')}/100/100`,
-            subscriberCount: item.channel?.subscribers || '250K+',
-            verified: Boolean(item.channel?.verified),
-            thumbnailUrl: thumb,
-            views: typeof item.views === 'number' ? item.views : 45000,
-            likes: Math.floor((item.views || 40000) * 0.04) || 1200,
-            dislikes: 12,
-            uploadedAt: item.uploadedAt || 'Baru saja',
-            duration: item.durationFormatted || '10:00',
-            category: 'Pencarian YouTube',
-            tags: [item.channel?.name || 'YouTube', 'Video', 'Pencarian'],
-            commentsCount: Math.floor((item.views || 40000) * 0.002) || 45,
-          });
+    // If still sparse, try Tier 3 (Invidious Mirror) + youtube-sr
+    if (combinedResults.length < 8) {
+      const [invidiousRes, srRes] = await Promise.allSettled([
+        searchViaInvidious(cleanQuery, limit),
+        YouTube.search(cleanQuery, {
+          limit: 25,
+          type: 'video',
+          safeSearch: false,
+        }).catch(() => []),
+      ]);
+
+      if (invidiousRes.status === 'fulfilled' && Array.isArray(invidiousRes.value)) {
+        for (const item of invidiousRes.value) {
+          if (!seenIds.has(item.id)) {
+            seenIds.add(item.id);
+            combinedResults.push(item);
+          }
+        }
+      }
+
+      if (srRes.status === 'fulfilled' && Array.isArray(srRes.value)) {
+        for (const item of srRes.value) {
+          if (!item || !item.id || !item.title) continue;
+          const id = `yt-${item.id}`;
+          if (!seenIds.has(id)) {
+            seenIds.add(id);
+            combinedResults.push({
+              id,
+              youtubeId: item.id,
+              title: item.title,
+              description: item.description || `Tonton "${item.title}" di NextTube.`,
+              channelTitle: item.channel?.name || 'YouTube Creator',
+              channelId: item.channel?.id || `c-${item.id}`,
+              channelAvatar:
+                item.channel?.icon?.url ||
+                `https://picsum.photos/seed/${encodeURIComponent(item.channel?.name || item.id)}/100/100`,
+              subscriberCount: item.channel?.subscribers || '250K+',
+              verified: Boolean(item.channel?.verified),
+              thumbnailUrl: item.thumbnail?.url || `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`,
+              views: typeof item.views === 'number' ? item.views : 45000,
+              likes: Math.floor((item.views || 40000) * 0.04) || 1200,
+              dislikes: 12,
+              uploadedAt: item.uploadedAt || 'Baru saja',
+              duration: item.durationFormatted || '10:00',
+              category: 'Pencarian YouTube',
+              tags: [item.channel?.name || 'YouTube', 'Video', 'Pencarian'],
+              commentsCount: Math.floor((item.views || 40000) * 0.002) || 45,
+            });
+          }
         }
       }
     }
   } catch (err) {
-    console.warn('Search execution error:', err);
+    console.warn('Search execution warning:', err);
   }
 
-  // Save to cache if results found
+  // Tier 4: Fallback to Curated Dataset to GUARANTEE results never return 0
+  if (combinedResults.length === 0) {
+    const curatedMatches = searchCuratedVideos(cleanQuery);
+    if (curatedMatches.length > 0) {
+      combinedResults = curatedMatches;
+    } else {
+      // Return top viral and popular curated videos instead of a blank empty screen
+      combinedResults = INITIAL_VIDEOS.slice(0, 10);
+    }
+  }
+
+  // Save to memory cache
   if (combinedResults.length > 0) {
     searchCache.set(cacheKey, {
       timestamp: Date.now(),
@@ -266,9 +338,15 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  return NextResponse.json({
-    results: combinedResults,
-    count: combinedResults.length,
-  });
+  return NextResponse.json(
+    {
+      results: combinedResults,
+      count: combinedResults.length,
+    },
+    {
+      headers: {
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=86400',
+      },
+    }
+  );
 }
-
