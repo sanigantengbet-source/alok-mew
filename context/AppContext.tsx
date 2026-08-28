@@ -243,20 +243,55 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const subs = Array.isArray(savedSubs) ? savedSubs : [];
           setSubscribedChannelIds(subs);
 
-          // Merge default channels with saved channels from IndexedDB
+          // Merge default channels with saved channels from IndexedDB, cleaning any legacy dummy data
           const channelMap = new Map<string, Channel>();
           INITIAL_CHANNELS.forEach((c) => channelMap.set(c.id, { ...c, isSubscribed: subs.includes(c.id) }));
           if (Array.isArray(savedCustomChannels)) {
             savedCustomChannels.forEach((c) => {
               if (c && c.id) {
+                const isDummy = c.subscribers === '120K+' || c.subscribers === '100K+' || (c.banner && c.banner.includes('photo-1618005182384'));
                 channelMap.set(c.id, {
                   ...c,
+                  banner: isDummy ? '' : c.banner,
+                  subscribers: isDummy ? '' : c.subscribers,
+                  description: isDummy ? '' : c.description,
                   isSubscribed: subs.includes(c.id),
                 });
               }
             });
           }
-          setChannels(Array.from(channelMap.values()));
+          const mergedChannels = Array.from(channelMap.values());
+          setChannels(mergedChannels);
+
+          // Proactively sync live YouTube data for any subscribed channels in the background
+          if (subs.length > 0) {
+            subs.forEach((subId) => {
+              const matched = mergedChannels.find((c) => c.id === subId || c.title.toLowerCase() === subId.toLowerCase());
+              const query = matched?.title || subId.replace(/^c-/, '');
+              if (query && (!matched?.subscribers || matched.subscribers === '120K+' || !matched?.banner)) {
+                fetch(`/api/youtube/channel?q=${encodeURIComponent(query)}`)
+                  .then((res) => res.json())
+                  .then((data) => {
+                    if (data?.channel) {
+                      setChannels((curr) => {
+                        const idx = curr.findIndex((item) => item.id === subId || item.id === data.channel.id || item.title.toLowerCase() === data.channel.title.toLowerCase());
+                        if (idx >= 0) {
+                          const updated = [...curr];
+                          updated[idx] = {
+                            ...updated[idx],
+                            ...data.channel,
+                            isSubscribed: true,
+                          };
+                          return updated;
+                        }
+                        return [{ ...data.channel, isSubscribed: true }, ...curr];
+                      });
+                    }
+                  })
+                  .catch(() => {});
+              }
+            });
+          }
 
           if (Array.isArray(savedLikes)) setLikedVideoIds(savedLikes);
           if (Array.isArray(savedDislikes)) setDislikedVideoIds(savedDislikes);
@@ -857,17 +892,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           avatar:
             matchingVideo?.channelAvatar ||
             `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(cleanTitle)}&backgroundColor=e11d48,2563eb,d97706`,
-          banner: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=2560&auto=format&fit=crop&q=80',
+          banner: '',
           handle: `@${cleanTitle.replace(/\s+/g, '').toLowerCase()}`,
-          subscribers: matchingVideo?.subscriberCount || '120K+',
+          subscribers: matchingVideo?.subscriberCount || '',
           verified: matchingVideo?.verified ?? true,
           isSubscribed: true,
-          videosCount: 24,
-          description: `Official NextTube channel for ${cleanTitle}.`,
-          joinedDate: 'Joined recently',
-          viewsCount: '1.5M views',
+          videosCount: 0,
+          description: '',
+          joinedDate: 'Bergabung di YouTube',
+          viewsCount: '',
         };
         nextChannels = [newChannel, ...prev];
+
+        // Background live fetch for real YouTube subscribers and banner
+        fetch(`/api/youtube/channel?q=${encodeURIComponent(cleanTitle || channelId)}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data?.channel) {
+              setChannels((curr) => {
+                const idx = curr.findIndex((item) => item.id === channelId || item.id === data.channel.id || item.title.toLowerCase() === data.channel.title.toLowerCase());
+                if (idx >= 0) {
+                  const updated = [...curr];
+                  updated[idx] = {
+                    ...updated[idx],
+                    ...data.channel,
+                    isSubscribed: true,
+                  };
+                  return updated;
+                }
+                return [{ ...data.channel, isSubscribed: true }, ...curr];
+              });
+            }
+          })
+          .catch(() => {});
       }
 
       setStoredItem('channels', nextChannels);
@@ -1042,22 +1099,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const cleanTitle = titleOrId.replace(/^c-/, '');
           const finalHandle = handle || `@${cleanTitle.replace(/\s+/g, '').toLowerCase()}`;
           const finalId = channelId || `c-${cleanTitle.replace(/\s+/g, '-').toLowerCase()}`;
+
+          // Find if we have subscriber info from an existing video
+          const matchingVideo =
+            videos.find((v) => v.channelId === finalId || v.channelTitle.toLowerCase() === cleanTitle.toLowerCase()) ||
+            (activeVideo && (activeVideo.channelId === finalId || activeVideo.channelTitle.toLowerCase() === cleanTitle.toLowerCase()) ? activeVideo : null);
           
           matchedChannel = {
             id: finalId,
             title: cleanTitle,
             avatar:
               fallbackAvatar ||
+              matchingVideo?.channelAvatar ||
               `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(cleanTitle)}&backgroundColor=e11d48,2563eb,d97706`,
-            banner: `https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=2560&auto=format&fit=crop&q=80`,
+            banner: '',
             handle: finalHandle,
-            subscribers: '120K+',
-            verified: true,
+            subscribers: matchingVideo?.subscriberCount || '',
+            verified: matchingVideo?.verified ?? true,
             isSubscribed: subscribedChannelIds.includes(finalId),
-            videosCount: 45,
-            description: `Official NextTube channel for ${cleanTitle}. Explore exclusive videos, tutorials, and content.`,
-            joinedDate: 'Joined recently',
-            viewsCount: '2.4M views',
+            videosCount: 0,
+            description: '',
+            joinedDate: 'Bergabung di YouTube',
+            viewsCount: '',
           };
           setChannels((prev) => [matchedChannel!, ...prev]);
         }
@@ -1069,6 +1132,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           ...matchedChannel,
           isSubscribed: subscribedChannelIds.includes(matchedChannel.id),
         };
+
+        // Proactively fetch live YouTube channel details in background
+        const query = matchedChannel.handle || matchedChannel.title || matchedChannel.id;
+        fetch(`/api/youtube/channel?q=${encodeURIComponent(query)}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data?.channel) {
+              const liveChannel: Channel = {
+                ...matchedChannel,
+                ...data.channel,
+                isSubscribed: subscribedChannelIds.includes(matchedChannel!.id),
+              };
+              updateChannelInState(liveChannel);
+            }
+          })
+          .catch(() => {});
       }
 
       setActiveChannel(matchedChannel);
@@ -1076,7 +1155,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setCurrentView('channel');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     },
-    [channels, currentView, subscribedChannelIds]
+    [channels, currentView, subscribedChannelIds, videos, activeVideo, updateChannelInState]
   );
 
   const minimizeWatchToPopUp = useCallback(() => {
