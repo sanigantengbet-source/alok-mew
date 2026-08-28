@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import YouTube from 'youtube-sr';
 import { parseYouTubeViews } from '@/lib/youtube-views';
 import { safeFetchYouTube } from '@/lib/youtube-fetch';
+import { INITIAL_SHORTS } from '@/data/shorts';
 
 // Rich, high-velocity topic & search pools for dynamic, fresh TikTok/Shorts FYP recommendations
 const LIVE_SHORTS_TOPIC_POOLS: { target: string; label: string }[] = [
@@ -285,12 +286,29 @@ export async function GET(req: NextRequest) {
     console.warn('Shorts fetch pool notice:', error);
   }
 
+  // Fallback to INITIAL_SHORTS if upstream is rate-limited or sparse
+  if (allShorts.length < 5) {
+    for (const item of INITIAL_SHORTS) {
+      if (!seenIds.has(item.id)) {
+        seenIds.add(item.id);
+        allShorts.push(item);
+      }
+    }
+  }
+
   // Shuffle slightly so every single user visit & refresh gets a completely fresh, exciting order
   const dynamicOrder = [...allShorts].sort(() => 0.5 - Math.random());
 
-  return NextResponse.json({
-    results: dynamicOrder,
-    count: dynamicOrder.length,
-    randomSeed: Date.now(),
-  });
+  return NextResponse.json(
+    {
+      results: dynamicOrder,
+      count: dynamicOrder.length,
+      randomSeed: Date.now(),
+    },
+    {
+      headers: {
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=86400',
+      },
+    }
+  );
 }
