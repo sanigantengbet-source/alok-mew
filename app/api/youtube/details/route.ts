@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import YouTube from 'youtube-sr';
 import { parseYouTubeViews } from '@/lib/youtube-views';
+import { safeFetchYouTube } from '@/lib/youtube-fetch';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const rawId = searchParams.get('videoId') || searchParams.get('id') || '';
-  const videoId = rawId.replace(/^yt-/, '').trim();
+  const videoId = rawId.replace(/^yt-/, '').replace(/^short-yt-/, '').trim();
 
   if (!videoId) {
     return NextResponse.json({ error: 'Video ID is required' }, { status: 400 });
@@ -14,18 +17,9 @@ export async function GET(req: NextRequest) {
   // 1. Primary: Scrape YouTube Watch Page for exact live data
   try {
     const watchUrl = `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
-    const res = await fetch(watchUrl, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
-      },
-      cache: 'no-store',
-    });
+    const html = await safeFetchYouTube(watchUrl, 2, 6000);
 
-    if (res.ok) {
-      const html = await res.text();
-
+    if (html) {
       // Extract player response
       const playerMatch =
         html.match(/var ytInitialPlayerResponse = ({[\s\S]*?});<\/script>/) ||
@@ -96,9 +90,10 @@ export async function GET(req: NextRequest) {
           } catch {}
         }
 
-        // Try to extract exact likes, subscriber count, avatar, and full description
-        let likes = Math.round(numericViews * 0.04) || 2500;
+        // Try to extract exact likes, subscriber count, comments count, avatar, and full description
+        let likes = 0;
         let subscriberCount = '';
+        let commentsCount = 0;
         let channelAvatar = `https://picsum.photos/seed/${encodeURIComponent(channelTitle)}/100/100`;
         let fullDescription = description || '';
 
@@ -107,14 +102,23 @@ export async function GET(req: NextRequest) {
           const scanNode = (node: any) => {
             if (!node || typeof node !== 'object') return;
 
-            // Likes extraction
+            // 1. Likes extraction
             if (node.segmentedLikeDislikeButtonViewModel?.likeButtonViewModel?.likeButtonViewModel?.toggleButtonViewModel?.toggleButtonViewModel?.defaultButtonViewModel?.buttonViewModel?.title) {
               const text = node.segmentedLikeDislikeButtonViewModel.likeButtonViewModel.likeButtonViewModel.toggleButtonViewModel.toggleButtonViewModel.defaultButtonViewModel.buttonViewModel.title;
-              const parsedLikes = parseYouTubeViews(text, null, 0);
-              if (parsedLikes > 0) likes = parsedLikes;
+              const parsed = parseYouTubeViews(text, null, 0);
+              if (parsed > 0) likes = parsed;
+            }
+            if (node.likeButtonViewModel?.likeButtonViewModel?.toggleButtonViewModel?.toggleButtonViewModel?.defaultButtonViewModel?.buttonViewModel?.title) {
+              const text = node.likeButtonViewModel.likeButtonViewModel.toggleButtonViewModel.toggleButtonViewModel.defaultButtonViewModel.buttonViewModel.title;
+              const parsed = parseYouTubeViews(text, null, 0);
+              if (parsed > 0) likes = parsed;
+            }
+            if (node.toggleButtonRenderer?.defaultText?.simpleText) {
+              const parsed = parseYouTubeViews(node.toggleButtonRenderer.defaultText.simpleText, null, 0);
+              if (parsed > 0) likes = parsed;
             }
 
-            // Subscriber count extraction
+            // 2. Subscriber count extraction
             if (node.videoOwnerRenderer?.subscriberCountText?.simpleText) {
               subscriberCount = node.videoOwnerRenderer.subscriberCountText.simpleText;
             } else if (Array.isArray(node.videoOwnerRenderer?.subscriberCountText?.runs)) {
@@ -127,7 +131,17 @@ export async function GET(req: NextRequest) {
               subscriberCount = node.videoOwnerRenderer.subscriberCountText.accessibility.accessibilityData.label;
             }
 
-            // Channel Avatar extraction
+            // 3. Comments Count extraction
+            if (node.commentsHeaderRenderer?.countText?.runs) {
+              const cText = node.commentsHeaderRenderer.countText.runs.map((r: any) => r.text).join('');
+              const parsed = parseYouTubeViews(cText, null, 0);
+              if (parsed > 0) commentsCount = parsed;
+            } else if (node.commentsEntryPointViewModel?.commentCount?.content) {
+              const parsed = parseYouTubeViews(node.commentsEntryPointViewModel.commentCount.content, null, 0);
+              if (parsed > 0) commentsCount = parsed;
+            }
+
+            // 4. Channel Avatar extraction
             if (node.videoOwnerRenderer?.thumbnail?.thumbnails && Array.isArray(node.videoOwnerRenderer.thumbnail.thumbnails)) {
               const thumbs = node.videoOwnerRenderer.thumbnail.thumbnails;
               if (thumbs.length > 0 && thumbs[thumbs.length - 1]?.url) {
@@ -140,7 +154,7 @@ export async function GET(req: NextRequest) {
               }
             }
 
-            // Full attributed description extraction
+            // 5. Full attributed description extraction
             if (node.attributedDescription?.content && node.attributedDescription.content.length > fullDescription.length) {
               fullDescription = node.attributedDescription.content;
             }
@@ -153,6 +167,31 @@ export async function GET(req: NextRequest) {
             }
           };
           scanNode(ytData);
+        }
+
+        // Likes Regex Fallback from raw HTML
+        if (!likes) {
+          const likeRegexMatch =
+            html.match(/"defaultButtonViewModel"\s*:\s*\{"buttonViewModel"\s*:\s*\{"title"\s*:\s*"([^"]+)"/) ||
+            html.match(/"accessibilityData"\s*:\s*\{"label"\s*:\s*"([0-9.,]+(?:\s*jt|\s*M|\s*rb|\s*K)?\s*(?:like|likes|suka))"/i);
+          if (likeRegexMatch && likeRegexMatch[1]) {
+            likes = parseYouTubeViews(likeRegexMatch[1], null, 0);
+          }
+        }
+        if (!likes) {
+          likes = Math.round(numericViews * 0.045) || 2500;
+        }
+
+        // Comments Count Regex Fallback from raw HTML
+        if (!commentsCount) {
+          const commentRegexMatch = html.match(/"countText"\s*:\s*\{"runs"\s*:\s*\[\{"text"\s*:\s*"([^"]+)"\}/) ||
+            html.match(/([0-9.,]+(?:\s*jt|\s*M|\s*rb|\s*K)?\s*(?:komentar|comments))/i);
+          if (commentRegexMatch && commentRegexMatch[1]) {
+            commentsCount = parseYouTubeViews(commentRegexMatch[1], null, 0);
+          }
+        }
+        if (!commentsCount) {
+          commentsCount = Math.round(numericViews * 0.0035) || 120;
         }
 
         // Regex fallbacks for subscriber count if not extracted from JSON
@@ -187,27 +226,31 @@ export async function GET(req: NextRequest) {
         }
 
         // Clean up subscriber count text (e.g. "1.25M subscribers" -> "1.25M")
-        let cleanedSubscribers = subscriberCount ? subscriberCount.replace(/\s*(?:subscribers?|pelanggan|pengikut|abonnés|suscriptores)\s*$/i, '').trim() : '';
+        let cleanedSubscribers = subscriberCount
+          ? subscriberCount.replace(/\s*(?:subscribers?|pelanggan|pengikut|abonnés|suscriptores)\s*$/i, '').trim()
+          : '';
 
-        // If still missing subscriber count, fetch quickly from channel info
-        if (!cleanedSubscribers && channelId && channelId.startsWith('UC')) {
+        // If still missing subscriber count, fetch real subscriber count from YouTube channel
+        if (!cleanedSubscribers || cleanedSubscribers === '100K+' || cleanedSubscribers === '150K+') {
           try {
-            const channelRes = await fetch(`https://www.youtube.com/channel/${encodeURIComponent(channelId)}`, {
-              headers: {
-                'User-Agent':
-                  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
-              },
-              signal: AbortSignal.timeout(2000),
-              cache: 'no-store',
-            });
-            if (channelRes.ok) {
-              const chHtml = await channelRes.text();
-              const chSubMatch = chHtml.match(/"subscriberCountText"\s*:\s*\{[^}]*?"simpleText"\s*:\s*"([^"]+)"/) ||
-                chHtml.match(/"subscriberCountText"\s*:\s*\{"runs":\s*\[\{"text"\s*:\s*"([^"]+)"\}/) ||
-                chHtml.match(/([0-9.,]+(?:\s*jt|\s*M|\s*rb|\s*K|\s*B)?\s*(?:subscriber|pelanggan|subscribers))/i);
-              if (chSubMatch && chSubMatch[1]) {
-                cleanedSubscribers = chSubMatch[1].replace(/\s*(?:subscribers?|pelanggan|pengikut)\s*$/i, '').trim();
+            let chTargetUrl = '';
+            if (channelId && channelId.startsWith('UC')) {
+              chTargetUrl = `https://www.youtube.com/channel/${encodeURIComponent(channelId)}`;
+            } else if (channelTitle) {
+              chTargetUrl = `https://www.youtube.com/@${encodeURIComponent(channelTitle.replace(/\s+/g, ''))}`;
+            }
+
+            if (chTargetUrl) {
+              const chHtml = await safeFetchYouTube(chTargetUrl, 2, 4500);
+              if (chHtml) {
+                const chSubMatch =
+                  chHtml.match(/"subscriberCountText"\s*:\s*\{[^}]*?"simpleText"\s*:\s*"([^"]+)"/) ||
+                  chHtml.match(/"subscriberCountText"\s*:\s*\{"runs":\s*\[\{"text"\s*:\s*"([^"]+)"\}/) ||
+                  chHtml.match(/"subscriberCountText"\s*:\s*\{"accessibility":\s*\{"accessibilityData":\s*\{"label"\s*:\s*"([^"]+)"/) ||
+                  chHtml.match(/([0-9.,]+(?:\s*jt|\s*M|\s*rb|\s*K|\s*B)?\s*(?:subscriber|pelanggan|subscribers|pengikut))/i);
+                if (chSubMatch && chSubMatch[1]) {
+                  cleanedSubscribers = chSubMatch[1].replace(/\s*(?:subscribers?|pelanggan|pengikut|abonnés|suscriptores)\s*$/i, '').trim();
+                }
               }
             }
           } catch {}
@@ -235,20 +278,18 @@ export async function GET(req: NextRequest) {
             thumbnailUrl: thumbnail,
             views: numericViews,
             likes,
-            dislikes: 10,
+            dislikes: Math.round(likes * 0.01) || 10,
             uploadedAt,
             duration: durationFormatted,
             category: 'YouTube',
             tags: Array.isArray(videoDetails.keywords) ? videoDetails.keywords : [channelTitle, 'YouTube'],
-            commentsCount: Math.round(numericViews * 0.003) || 120,
+            commentsCount,
           },
           source: 'watch-page-scrape',
         });
       }
     }
-  } catch (err) {
-    console.warn('Scraping watch page details notice:', err);
-  }
+  } catch {}
 
   // 2. Fallback: youtube-sr getVideo
   try {
@@ -263,11 +304,11 @@ export async function GET(req: NextRequest) {
           channelTitle: v.channel?.name || 'YouTube Creator',
           channelId: v.channel?.id || `c-${videoId}`,
           channelAvatar: v.channel?.icon?.url || `https://picsum.photos/seed/${encodeURIComponent(v.channel?.name || videoId)}/100/100`,
-          subscriberCount: v.channel?.subscribers || '100K+',
+          subscriberCount: v.channel?.subscribers ? v.channel.subscribers.replace(/subscribers?/i, '').trim() : '100K+',
           verified: Boolean(v.channel?.verified),
           thumbnailUrl: v.thumbnail?.url || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
           views: typeof v.views === 'number' ? v.views : 150000,
-          likes: typeof v.likes === 'number' ? v.likes : Math.round((v.views || 100000) * 0.04),
+          likes: typeof v.likes === 'number' ? v.likes : Math.round((v.views || 100000) * 0.045),
           dislikes: 10,
           uploadedAt: v.uploadedAt || 'Recently',
           duration: v.durationFormatted || '10:00',
@@ -278,9 +319,7 @@ export async function GET(req: NextRequest) {
         source: 'youtube-sr',
       });
     }
-  } catch (err) {
-    console.warn('youtube-sr getVideo notice:', err);
-  }
+  } catch {}
 
   return NextResponse.json({ error: 'Video details not found' }, { status: 404 });
 }
