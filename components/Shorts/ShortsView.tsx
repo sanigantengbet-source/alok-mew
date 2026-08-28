@@ -24,11 +24,14 @@ import Image from 'next/image';
 import { ShortsCommentsModal } from './ShortsCommentsModal';
 
 const TRENDING_QUERIES = [
-  '#shorts viral trending',
-  '#shorts fyp viral 2026',
-  '#shorts trending indonesia',
-  '#shorts tiktok viral trending',
-  '#shorts popular trending',
+  '#shorts fyp viral tiktok terbaru 2026',
+  '#shorts sketsa komedi lucu ngakak viral',
+  '#shorts viral trending indonesia hari ini',
+  '#shorts gaming streamer momen seru',
+  '#shorts review makanan kuliner viral',
+  '#shorts fakta menarik unik dunia',
+  '#shorts teknologi gadget canggih terbaru',
+  '#shorts lagu viral tiktok hits 2026',
 ];
 
 export const ShortsView: React.FC = () => {
