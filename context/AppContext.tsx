@@ -174,7 +174,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(DEFAULT_USER);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [videos, setVideos] = useState<Video[]>([]);
+  const [videos, setVideos] = useState<Video[]>(INITIAL_VIDEOS);
   const [shorts, setShorts] = useState<Video[]>(INITIAL_SHORTS);
   const [searchResults, setSearchResults] = useState<Video[]>([]);
   const [activeVideo, setActiveVideo] = useState<Video | null>(null);
@@ -185,7 +185,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const [channels, setChannels] = useState<Channel[]>(INITIAL_CHANNELS);
-  const [subscribedChannelIds, setSubscribedChannelIds] = useState<string[]>([]);
+  const [subscribedChannelIds, setSubscribedChannelIds] = useState<string[]>([
+    'c-sebastian-tedy',
+    'c-windah-basudara',
+    'c-gadgetin',
+    'c-kompas-tv',
+  ]);
   const [likedVideoIds, setLikedVideoIds] = useState<string[]>([]);
   const [dislikedVideoIds, setDislikedVideoIds] = useState<string[]>([]);
   const [watchLaterIds, setWatchLaterIds] = useState<string[]>([]);
