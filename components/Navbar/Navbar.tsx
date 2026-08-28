@@ -67,13 +67,11 @@ export const Navbar: React.FC = () => {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isAppsMenuOpen, setIsAppsMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [liveSuggestions, setLiveSuggestions] = useState<string[]>([]);
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const appsMenuRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
-  const profileMenuRef = useRef<HTMLDivElement>(null);
   const mobileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch live YouTube suggestions as user types
@@ -121,9 +119,6 @@ export const Navbar: React.FC = () => {
       }
       if (notificationsRef.current && !notificationsRef.current.contains(e.target as Node)) {
         setIsNotificationsOpen(false);
-      }
-      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
-        setIsProfileMenuOpen(false);
       }
       if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
         setIsSearchFocused(false);
@@ -178,7 +173,7 @@ export const Navbar: React.FC = () => {
               id="mobile-search-back-btn"
               onClick={() => setIsMobileSearchOpen(false)}
               aria-label="Back"
-              className="p-2 rounded-full hover:bg-[#222] text-white shrink-0"
+              className="p-2 rounded-full hover:bg-[#222] text-white shrink-0 cursor-pointer"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -199,7 +194,7 @@ export const Navbar: React.FC = () => {
                     type="button"
                     id="navbar-clear-mobile-search-btn"
                     onClick={handleClearSearch}
-                    className="p-1 text-gray-400 hover:text-white"
+                    className="p-1 text-gray-400 hover:text-white cursor-pointer"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -214,7 +209,7 @@ export const Navbar: React.FC = () => {
                 setIsVoiceModalOpen(true);
               }}
               aria-label="Search with voice"
-              className="p-2.5 rounded-full bg-[#1e1e1e] text-white hover:bg-[#2a2a2a] shrink-0"
+              className="p-2.5 rounded-full bg-[#1e1e1e] text-white hover:bg-[#2a2a2a] shrink-0 cursor-pointer"
             >
               <Mic className="w-4 h-4" />
             </button>
@@ -228,7 +223,7 @@ export const Navbar: React.FC = () => {
                 <button
                   type="button"
                   onClick={clearSearchHistory}
-                  className="text-xs text-red-400 hover:text-red-300 font-semibold"
+                  className="text-xs text-red-400 hover:text-red-300 font-semibold cursor-pointer"
                 >
                   Clear All
                 </button>
@@ -256,7 +251,7 @@ export const Navbar: React.FC = () => {
                       setSearchInput(item);
                       executeSearch(item);
                     }}
-                    className="flex-1 flex items-center gap-4 text-left truncate"
+                    className="flex-1 flex items-center gap-4 text-left truncate cursor-pointer"
                   >
                     {isHistoryItem ? (
                       <Clock className="w-4 h-4 text-gray-400 shrink-0" />
@@ -274,7 +269,7 @@ export const Navbar: React.FC = () => {
                         removeSearchHistory(item);
                       }}
                       title="Remove from history"
-                      className="p-1 text-gray-500 hover:text-gray-300"
+                      className="p-1 text-gray-500 hover:text-gray-300 cursor-pointer"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -292,7 +287,7 @@ export const Navbar: React.FC = () => {
           id="navbar-sidebar-toggle-btn"
           onClick={toggleSidebar}
           aria-label="Toggle Navigation Menu"
-          className="p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#272727] text-gray-700 dark:text-gray-200 transition-colors touch-manipulation"
+          className="p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#272727] text-gray-700 dark:text-gray-200 transition-colors touch-manipulation cursor-pointer"
         >
           <Menu className="w-5 h-5" />
         </button>
@@ -300,7 +295,7 @@ export const Navbar: React.FC = () => {
         <button
           id="navbar-logo-btn"
           onClick={handleGoHome}
-          className="flex items-center group select-none touch-manipulation focus:outline-hidden"
+          className="flex items-center group select-none touch-manipulation focus:outline-hidden cursor-pointer"
           aria-label="NextTube Home"
         >
           <NextTubeLogo size="md" />
@@ -330,14 +325,14 @@ export const Navbar: React.FC = () => {
               value={searchInput}
               onFocus={() => setIsSearchFocused(true)}
               onChange={(e) => setSearchInput(e.target.value)}
-              className="w-full bg-transparent text-sm text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:outline-none"
+              className="w-full bg-transparent text-sm text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none"
             />
             {searchInput && (
               <button
                 type="button"
                 id="navbar-clear-search-btn"
                 onClick={handleClearSearch}
-                className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -348,7 +343,7 @@ export const Navbar: React.FC = () => {
             type="submit"
             id="navbar-search-submit-btn"
             aria-label="Search"
-            className="h-10 px-6 bg-gray-100 dark:bg-[#222222] border border-l-0 border-gray-300 dark:border-[#303030] rounded-r-full hover:bg-gray-200 dark:hover:bg-[#2c2c2c] text-gray-600 dark:text-gray-300 transition-colors flex items-center justify-center"
+            className="h-10 px-6 bg-gray-100 dark:bg-[#222222] border border-l-0 border-gray-300 dark:border-[#303030] rounded-r-full hover:bg-gray-200 dark:hover:bg-[#2c2c2c] text-gray-600 dark:text-gray-300 transition-colors flex items-center justify-center cursor-pointer"
           >
             <Search className="w-4 h-4" />
           </button>
@@ -359,7 +354,7 @@ export const Navbar: React.FC = () => {
           id="navbar-voice-search-btn"
           onClick={() => setIsVoiceModalOpen(true)}
           aria-label="Search with voice"
-          className="ml-2.5 p-2.5 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-[#222222] dark:hover:bg-[#2c2c2c] text-gray-700 dark:text-gray-200 transition-colors shrink-0"
+          className="ml-2.5 p-2.5 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-[#222222] dark:hover:bg-[#2c2c2c] text-gray-700 dark:text-gray-200 transition-colors shrink-0 cursor-pointer"
         >
           <Mic className="w-4 h-4" />
         </button>
@@ -380,7 +375,7 @@ export const Navbar: React.FC = () => {
                     e.preventDefault();
                     clearSearchHistory();
                   }}
-                  className="text-[11px] text-red-500 hover:text-red-600 font-medium"
+                  className="text-[11px] text-red-500 hover:text-red-600 font-medium cursor-pointer"
                 >
                   Clear History
                 </button>
@@ -402,7 +397,7 @@ export const Navbar: React.FC = () => {
                       setSearchInput(item);
                       executeSearch(item);
                     }}
-                    className="flex-1 flex items-center gap-3 text-left truncate"
+                    className="flex-1 flex items-center gap-3 text-left truncate cursor-pointer"
                   >
                     {isHistoryItem ? (
                       <Clock className="w-3.5 h-3.5 text-gray-400 shrink-0" />
@@ -421,7 +416,7 @@ export const Navbar: React.FC = () => {
                         removeSearchHistory(item);
                       }}
                       title="Remove from history"
-                      className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -440,7 +435,7 @@ export const Navbar: React.FC = () => {
           id="navbar-mobile-search-toggle"
           onClick={() => setIsMobileSearchOpen(true)}
           aria-label="Open Search"
-          className="md:hidden p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#272727] text-gray-700 dark:text-gray-200 touch-manipulation"
+          className="md:hidden p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#272727] text-gray-700 dark:text-gray-200 touch-manipulation cursor-pointer"
         >
           <Search className="w-5 h-5" />
         </button>
@@ -456,7 +451,7 @@ export const Navbar: React.FC = () => {
             }
           }}
           title="Create or Upload Video"
-          className="hidden sm:flex p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#272727] text-gray-700 dark:text-gray-200 transition-colors relative items-center"
+          className="hidden sm:flex p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#272727] text-gray-700 dark:text-gray-200 transition-colors relative items-center cursor-pointer"
         >
           <VideoPlus className="w-5 h-5" />
         </button>
@@ -467,7 +462,7 @@ export const Navbar: React.FC = () => {
             id="navbar-apps-menu-btn"
             onClick={() => setIsAppsMenuOpen(!isAppsMenuOpen)}
             title="NextTube Apps"
-            className="p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#272727] text-gray-700 dark:text-gray-200 transition-colors"
+            className="p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#272727] text-gray-700 dark:text-gray-200 transition-colors cursor-pointer"
           >
             <Grid className="w-5 h-5" />
           </button>
@@ -488,7 +483,7 @@ export const Navbar: React.FC = () => {
                     key={item.name}
                     id={`app-item-${item.name.replace(/\s+/g, '-').toLowerCase()}`}
                     onClick={() => setIsAppsMenuOpen(false)}
-                    className="w-full px-4 py-2.5 flex items-center gap-3 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#303030] transition-colors"
+                    className="w-full px-4 py-2.5 flex items-center gap-3 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#303030] transition-colors cursor-pointer"
                   >
                     <item.icon className={`w-4 h-4 ${item.color}`} />
                     <span>{item.name}</span>
