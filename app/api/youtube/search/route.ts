@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import YouTube from 'youtube-sr';
 import { parseYouTubeViews } from '@/lib/youtube-views';
+import { safeFetchYouTube } from '@/lib/youtube-fetch';
 
 // Helper to extract YouTube video ID if user searched a URL directly
 function extractYouTubeVideoId(input: string): string | null {
@@ -34,18 +35,9 @@ const searchCache = new Map<string, { timestamp: number; results: any[] }>();
 async function searchViaYouTubeHTML(query: string, limit = 50) {
   try {
     const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&sp=EgIQAQ%253D%253D`;
-    const res = await fetch(searchUrl, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
-      },
-      cache: 'no-store',
-    });
+    const html = await safeFetchYouTube(searchUrl, 2, 6000);
+    if (!html) return [];
 
-    if (!res.ok) return [];
-
-    const html = await res.text();
     const jsonMatch =
       html.match(/var ytInitialData = ({[\s\S]*?});<\/script>/) ||
       html.match(/window\["ytInitialData"\] = ({[\s\S]*?});<\/script>/) ||
