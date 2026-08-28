@@ -64,15 +64,15 @@ export const SubscriptionsView: React.FC = () => {
         avatar:
           matchVid?.channelAvatar ||
           `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(cleanTitle)}&backgroundColor=e11d48,2563eb,d97706`,
-        banner: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=2560&auto=format&fit=crop&q=80',
+        banner: '',
         handle: `@${cleanTitle.replace(/\s+/g, '').toLowerCase()}`,
-        subscribers: matchVid?.subscriberCount || '100K+',
+        subscribers: matchVid?.subscriberCount || '',
         verified: matchVid?.verified ?? true,
         isSubscribed: true,
-        videosCount: 20,
-        description: `Official NextTube channel for ${cleanTitle}.`,
-        joinedDate: 'Joined recently',
-        viewsCount: '1.2M views',
+        videosCount: 0,
+        description: '',
+        joinedDate: 'Bergabung di YouTube',
+        viewsCount: '',
       };
     });
   }, [channels, subscribedChannelIds, videos]);
@@ -304,7 +304,15 @@ export const SubscriptionsView: React.FC = () => {
                 )}
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                {selectedChannelObj.handle} &bull; {selectedChannelObj.subscribers} subscribers
+                {selectedChannelObj.handle || `@${selectedChannelObj.title.replace(/\s+/g, '').toLowerCase()}`}
+                {selectedChannelObj.subscribers && (
+                  <span>
+                    {' '}&bull;{' '}
+                    {selectedChannelObj.subscribers.toLowerCase().includes('sub') || selectedChannelObj.subscribers.toLowerCase().includes('pelanggan')
+                      ? selectedChannelObj.subscribers
+                      : `${selectedChannelObj.subscribers} subscribers`}
+                  </span>
+                )}
               </p>
             </div>
           </div>
