@@ -1,78 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server';
 import YouTube from 'youtube-sr';
 import { parseYouTubeViews } from '@/lib/youtube-views';
+import { safeFetchYouTube } from '@/lib/youtube-fetch';
 
-// Rich, high-velocity topic & hashtag pools for dynamic, fresh TikTok/Shorts FYP recommendations
-const LIVE_SHORTS_TOPIC_POOLS: { type: 'hashtag' | 'search'; target: string; label: string }[] = [
+// Rich, high-velocity topic & search pools for dynamic, fresh TikTok/Shorts FYP recommendations
+const LIVE_SHORTS_TOPIC_POOLS: { target: string; label: string }[] = [
   // 1. Core Trending & FYP
-  { type: 'hashtag', target: 'shorts', label: 'Trending Shorts' },
-  { type: 'hashtag', target: 'fyp', label: 'FYP Viral' },
-  { type: 'hashtag', target: 'viral', label: 'Viral Hot' },
-  { type: 'hashtag', target: 'trending', label: 'Trending Now' },
-  { type: 'hashtag', target: 'indonesia', label: 'Trending Indo' },
+  { target: 'shorts viral trending terbaru fyp', label: 'Trending Shorts' },
+  { target: 'fyp viral tiktok shorts trending', label: 'FYP Viral' },
+  { target: 'shorts trending indonesia viral', label: 'Trending Indo' },
 
   // 2. Comedy & Entertainment (Humor)
-  { type: 'hashtag', target: 'lucu', label: 'Komedi Lucu' },
-  { type: 'hashtag', target: 'ngakak', label: 'Momen Ngakak' },
-  { type: 'hashtag', target: 'komedi', label: 'Sketsa Komedi' },
-  { type: 'search', target: '#shorts sketsa komedi lucu viral terbaru', label: 'Sketsa Lucu' },
+  { target: 'shorts sketsa komedi lucu ngakak viral', label: 'Sketsa Komedi' },
+  { target: 'shorts video lucu bikin ngakak kocak', label: 'Momen Ngakak' },
+  { target: 'shorts stand up comedy lucu viral', label: 'Komedi Lucu' },
 
   // 3. Gaming & Streamer
-  { type: 'hashtag', target: 'game', label: 'Gaming Viral' },
-  { type: 'hashtag', target: 'gaming', label: 'Streamer Gaming' },
-  { type: 'search', target: '#shorts gaming viral seru indonesia', label: 'Gaming Indo' },
+  { target: 'shorts gaming streamer epic moments viral', label: 'Gaming Viral' },
+  { target: 'shorts game play seru lucu indonesia', label: 'Gaming Indo' },
 
   // 4. Kuliner & Food
-  { type: 'hashtag', target: 'kuliner', label: 'Kuliner Viral' },
-  { type: 'hashtag', target: 'makanan', label: 'Street Food' },
-  { type: 'search', target: '#shorts review makanan viral street food', label: 'Food Review' },
+  { target: 'shorts review makanan viral street food enak', label: 'Kuliner Viral' },
+  { target: 'shorts mukbang asmr kuliner street food', label: 'Street Food' },
 
   // 5. Tech & Gadget
-  { type: 'hashtag', target: 'gadget', label: 'Gadget Unik' },
-  { type: 'hashtag', target: 'teknologi', label: 'Teknologi Canggih' },
-  { type: 'search', target: '#shorts gadget canggih inovasi unik', label: 'Tech Innovation' },
+  { target: 'shorts gadget canggih teknologi unik terbaru', label: 'Gadget Unik' },
+  { target: 'shorts tips trik hp teknologi inovasi', label: 'Tech Innovation' },
 
   // 6. Music & Sounds
-  { type: 'hashtag', target: 'musik', label: 'Musik Viral' },
-  { type: 'search', target: '#shorts lagu hits viral tiktok sound 2026', label: 'TikTok Hits' },
+  { target: 'shorts lagu hits viral tiktok sound terbaru', label: 'Musik Viral' },
 
   // 7. Fakta Unik & Populer
-  { type: 'hashtag', target: 'faktaunik', label: 'Fakta Menarik' },
-  { type: 'search', target: '#shorts fakta menarik dunia terpopuler', label: 'Fakta Seru' },
-  { type: 'search', target: '#shorts momen unik heboh media sosial', label: 'Momen Heboh' },
+  { target: 'shorts fakta menarik dunia terpopuler unik seru', label: 'Fakta Menarik' },
+  { target: 'shorts momen unik heboh viral media sosial', label: 'Momen Heboh' },
 ];
 
 // Helper to scrape shorts directly from YouTube HTML ytInitialData
-async function scrapeShortsFromYouTube(source: { type: 'hashtag' | 'search'; target: string; label: string } | string) {
+async function scrapeShortsFromYouTube(source: { target: string; label: string } | string) {
   try {
-    let searchUrl = '';
+    let queryTerm = '';
     if (typeof source === 'string') {
-      if (source.startsWith('http')) {
-        searchUrl = source;
-      } else if (source.startsWith('#')) {
-        searchUrl = `https://www.youtube.com/hashtag/${encodeURIComponent(source.replace(/^#/, ''))}`;
-      } else {
-        // sp=CAISAhAB sorts by latest upload date + video format
-        searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(source + ' #shorts')}&sp=CAISAhAB`;
-      }
-    } else if (source.type === 'hashtag') {
-      searchUrl = `https://www.youtube.com/hashtag/${encodeURIComponent(source.target)}`;
+      queryTerm = source.replace(/^#/, '').trim();
     } else {
-      searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(source.target)}&sp=CAISAhAB`;
+      queryTerm = source.target;
     }
 
-    const res = await fetch(searchUrl, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
-      },
-      cache: 'no-store',
-    });
+    if (!queryTerm.toLowerCase().includes('short')) {
+      queryTerm += ' #shorts';
+    }
 
-    if (!res.ok) return [];
+    // sp=EgIQAQ%253D%253D filters by Video, preventing hashtag redirect loops
+    const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(queryTerm)}&sp=EgIQAQ%253D%253D`;
 
-    const html = await res.text();
+    const html = await safeFetchYouTube(searchUrl, 2, 5000);
+    if (!html) return [];
+
     const match =
       html.match(/var ytInitialData = ({[\s\S]*?});<\/script>/) ||
       html.match(/window\["ytInitialData"\] = ({[\s\S]*?});<\/script>/) ||
@@ -206,8 +188,7 @@ async function scrapeShortsFromYouTube(source: { type: 'hashtag' | 'search'; tar
 
     walk(parsed);
     return results;
-  } catch (err) {
-    console.warn('YouTube Shorts scraper notice:', err);
+  } catch {
     return [];
   }
 }
