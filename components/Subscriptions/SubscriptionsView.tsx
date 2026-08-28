@@ -137,17 +137,30 @@ export const SubscriptionsView: React.FC = () => {
 
     let list = videos.filter((v) => {
       if (selectedChannelFilter) {
+        const filterLower = selectedChannelFilter.toLowerCase().replace(/^c-/, '').replace(/\s+/g, '');
+        const titleLower = v.channelTitle.toLowerCase().replace(/\s+/g, '');
         return (
           v.channelId === selectedChannelFilter ||
-          v.channelTitle.toLowerCase() === selectedChannelFilter.toLowerCase()
+          titleLower.includes(filterLower) ||
+          filterLower.includes(titleLower)
         );
       }
-      return subscribedChannelIds.some(
-        (id) =>
+      return subscribedChannelIds.some((id) => {
+        const idClean = id.toLowerCase().replace(/^c-/, '').replace(/\s+/g, '');
+        const chTitleClean = v.channelTitle.toLowerCase().replace(/\s+/g, '');
+        return (
           id === v.channelId ||
+          chTitleClean.includes(idClean) ||
+          idClean.includes(chTitleClean) ||
           channels.find((c) => c.id === id)?.title.toLowerCase() === v.channelTitle.toLowerCase()
-      );
+        );
+      });
     });
+
+    // If channel filter had no direct video matches in state, provide general curated videos
+    if (selectedChannelFilter && list.length === 0) {
+      list = videos.slice(0, 6);
+    }
 
     if (activeFilter === 'today') {
       list = list.slice(0, 8);
