@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import YouTube from 'youtube-sr';
 import { parseYouTubeViews } from '@/lib/youtube-views';
+import { safeFetchYouTube } from '@/lib/youtube-fetch';
 
 // Scrape YouTube HTML search for live streams & live replays for a channel
 async function searchLiveReplaysViaHTML(query: string, limit = 20) {
@@ -18,19 +19,10 @@ async function searchLiveReplaysViaHTML(query: string, limit = 20) {
     for (const q of searchQueries) {
       if (results.length >= limit) break;
 
-      const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
-      const res = await fetch(searchUrl, {
-        headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-          'Accept-Language': 'en-US,en;q=0.9,id;q=0.8',
-        },
-        cache: 'no-store',
-      });
+      const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}&sp=EgIQAQ%253D%253D`;
+      const html = await safeFetchYouTube(searchUrl, 2, 5000);
+      if (!html) continue;
 
-      if (!res.ok) continue;
-
-      const html = await res.text();
       const jsonMatch =
         html.match(/var ytInitialData = ({[\s\S]*?});<\/script>/) ||
         html.match(/window\["ytInitialData"\] = ({[\s\S]*?});<\/script>/);
@@ -110,8 +102,7 @@ async function searchLiveReplaysViaHTML(query: string, limit = 20) {
     }
 
     return results;
-  } catch (err) {
-    console.warn('Live Replay search error:', err);
+  } catch {
     return [];
   }
 }
@@ -126,7 +117,17 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // 1. Try search via youtube-sr
+    // 1. Primary: Scrape YouTube HTML search
+    const htmlResults = await searchLiveReplaysViaHTML(channel, limit);
+    if (htmlResults.length >= 4) {
+      return NextResponse.json({
+        results: htmlResults,
+        source: 'html-scraper',
+        channel,
+      });
+    }
+
+    // 2. Secondary fallback: youtube-sr (safely wrapped)
     const query = `${channel} live stream`;
     let srResults: any[] = [];
 
@@ -164,24 +165,14 @@ export async function GET(req: NextRequest) {
             isLive: Boolean(v.live),
           }));
       }
-    } catch (e) {
-      console.warn('youtube-sr live stream query failed:', e);
+    } catch {
+      // Silently fall through to combined results
     }
 
-    if (srResults.length >= 4) {
-      return NextResponse.json({
-        results: srResults,
-        source: 'youtube-sr',
-        channel,
-      });
-    }
+    const combined = [...htmlResults];
+    const seen = new Set(htmlResults.map((r) => r.youtubeId));
 
-    // 2. Fallback to scraping
-    const htmlResults = await searchLiveReplaysViaHTML(channel, limit);
-    const combined = [...srResults];
-    const seen = new Set(srResults.map((r) => r.youtubeId));
-
-    for (const item of htmlResults) {
+    for (const item of srResults) {
       if (!seen.has(item.youtubeId)) {
         combined.push(item);
         seen.add(item.youtubeId);
@@ -190,7 +181,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       results: combined,
-      source: 'scraper-fallback',
+      source: 'combined',
       channel,
     });
   } catch (err: any) {
@@ -200,3 +191,4 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+
