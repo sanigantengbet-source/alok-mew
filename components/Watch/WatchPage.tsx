@@ -316,14 +316,24 @@ export const WatchPage: React.FC = () => {
   const isDisliked = dislikedVideoIds.includes(activeVideo.id);
   const isSaved = watchLaterIds.includes(activeVideo.id);
 
-  // Live metadata or fallback
-  const displayViews = liveDetails?.views ?? activeVideo.views;
-  const displayLikes = liveDetails?.likes ?? activeVideo.likes;
-  const displaySubsRaw = liveDetails?.subscriberCount || activeVideo.subscriberCount;
+  // Live metadata or fallback with preservation of authentic data
+  const isPlaceholderAvatar = (url?: string) => !url || url.includes('picsum.photos') || url.includes('dicebear.com');
+  const isPlaceholderSubs = (sub?: string) => !sub || sub === '100K+' || sub === '500K+' || sub === 'Subscribers' || sub === '100K';
+
+  const displayViews = (liveDetails?.views && liveDetails.views > 0) ? liveDetails.views : activeVideo.views;
+  const displayLikes = (liveDetails?.likes && liveDetails.likes > 0) ? liveDetails.likes : activeVideo.likes;
+
+  const displaySubsRaw = (liveDetails?.subscriberCount && !isPlaceholderSubs(liveDetails.subscriberCount))
+    ? liveDetails.subscriberCount
+    : (!isPlaceholderSubs(activeVideo.subscriberCount) ? activeVideo.subscriberCount : (liveDetails?.subscriberCount || activeVideo.subscriberCount));
+  
   const displaySubs = formatSubscriberCount(displaySubsRaw);
-  const displayUploadedAt = liveDetails?.uploadedAt || activeVideo.uploadedAt;
-  const displayDescription = liveDetails?.description || activeVideo.description;
-  const displayAvatar = liveDetails?.channelAvatar || activeVideo.channelAvatar;
+  const displayUploadedAt = (liveDetails?.uploadedAt && liveDetails.uploadedAt !== 'Recently') ? liveDetails.uploadedAt : activeVideo.uploadedAt;
+  const displayDescription = (liveDetails?.description && liveDetails.description !== 'Tonton video di NextTube player.') ? liveDetails.description : activeVideo.description;
+  
+  const displayAvatar = (liveDetails?.channelAvatar && !isPlaceholderAvatar(liveDetails.channelAvatar))
+    ? liveDetails.channelAvatar
+    : (!isPlaceholderAvatar(activeVideo.channelAvatar) ? activeVideo.channelAvatar : (liveDetails?.channelAvatar || activeVideo.channelAvatar));
 
   // Final related list: dynamic API results first, fallback to relevant local videos
   const relatedVideos = dynamicRelated.length > 0 ? dynamicRelated : localRelevantVideos;
