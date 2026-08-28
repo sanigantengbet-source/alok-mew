@@ -39,6 +39,7 @@ export const ChannelView: React.FC = () => {
     playVideoById,
     setShareModalVideo,
     searchYouTube,
+    updateChannelInState,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'home' | 'videos' | 'shorts' | 'live' | 'playlists' | 'about'>('home');
@@ -54,23 +55,32 @@ export const ChannelView: React.FC = () => {
   const [isLoadingLiveReplays, setIsLoadingLiveReplays] = useState<boolean>(false);
   const [bellState, setBellState] = useState<'all' | 'personalized' | 'none'>('all');
   const [isBellMenuOpen, setIsBellMenuOpen] = useState(false);
-  const [liveMeta, setLiveMeta] = useState<{ avatar?: string; banner?: string; subscribers?: string; description?: string } | null>(null);
+  const [liveMeta, setLiveMeta] = useState<{
+    avatar?: string;
+    banner?: string;
+    subscribers?: string;
+    description?: string;
+    videosCount?: number;
+    viewsCount?: string;
+    joinedDate?: string;
+    handle?: string;
+  } | null>(null);
 
-  // If no active channel selected, fallback gracefully
+  // If no active channel selected, fallback gracefully without dummy numbers/images
   const baseChannel: Channel = useMemo(
     () =>
       activeChannel || {
         id: 'c-default',
-        title: 'Featured Channel',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
-        banner: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1600&auto=format&fit=crop&q=80',
-        handle: '@featured_channel',
-        subscribers: '250K',
+        title: 'Channel',
+        avatar: '',
+        banner: '',
+        handle: '',
+        subscribers: '',
         verified: true,
-        videosCount: 88,
-        description: 'Welcome to our official NextTube channel. Discover tutorials, high quality podcasts, and exclusive videos.',
-        joinedDate: 'Jan 2021',
-        viewsCount: '15.2M views',
+        videosCount: 0,
+        description: '',
+        joinedDate: 'Bergabung di YouTube',
+        viewsCount: '',
       },
     [activeChannel]
   );
@@ -79,22 +89,28 @@ export const ChannelView: React.FC = () => {
     () => ({
       ...baseChannel,
       avatar: liveMeta?.avatar || baseChannel.avatar,
-      banner: liveMeta?.banner || baseChannel.banner,
-      subscribers: liveMeta?.subscribers || baseChannel.subscribers,
+      banner: liveMeta?.banner || (baseChannel.banner && !baseChannel.banner.includes('photo-1618005182384') ? baseChannel.banner : ''),
+      subscribers: liveMeta?.subscribers || (baseChannel.subscribers !== '120K+' && baseChannel.subscribers !== '100K+' ? baseChannel.subscribers : ''),
       description: liveMeta?.description || baseChannel.description,
+      videosCount: liveMeta?.videosCount !== undefined ? liveMeta.videosCount : baseChannel.videosCount,
+      viewsCount: liveMeta?.viewsCount || baseChannel.viewsCount,
+      joinedDate: liveMeta?.joinedDate || baseChannel.joinedDate,
+      handle: liveMeta?.handle || baseChannel.handle,
     }),
     [baseChannel, liveMeta]
   );
 
   const isSubscribed = subscribedChannelIds.includes(channel.id);
 
-  // Fetch real YouTube channel metadata (avatar, banner, description)
+  // Fetch real YouTube channel metadata (subscribers, total videos VT, total views, avatar, banner, description)
   useEffect(() => {
     let isCancelled = false;
 
     const fetchLiveChannelInfo = async () => {
       try {
-        const res = await fetch(`/api/youtube/channel?q=${encodeURIComponent(baseChannel.title)}`);
+        const query = baseChannel.handle || baseChannel.title || baseChannel.id;
+        if (!query) return;
+        const res = await fetch(`/api/youtube/channel?q=${encodeURIComponent(query)}`);
         if (res.ok) {
           const data = await res.json();
           if (data?.channel && !isCancelled) {
@@ -103,6 +119,18 @@ export const ChannelView: React.FC = () => {
               banner: data.channel.banner,
               subscribers: data.channel.subscribers,
               description: data.channel.description,
+              videosCount: data.channel.videosCount,
+              viewsCount: data.channel.viewsCount,
+              joinedDate: data.channel.joinedDate,
+              handle: data.channel.handle,
+            });
+
+            // Persist the real channel metadata globally into AppContext so that
+            // subsequent visits and SubscriptionsView show real data instantly!
+            updateChannelInState({
+              ...baseChannel,
+              ...data.channel,
+              isSubscribed,
             });
           }
         }
@@ -116,7 +144,7 @@ export const ChannelView: React.FC = () => {
     return () => {
       isCancelled = true;
     };
-  }, [baseChannel.title]);
+  }, [baseChannel, isSubscribed, updateChannelInState]);
 
   // Filter local videos & fetch real YouTube videos for this specific channel
   useEffect(() => {
@@ -175,7 +203,7 @@ export const ChannelView: React.FC = () => {
     return () => {
       isCancelled = true;
     };
-  }, [channel, videos]);
+  }, [channel.title, channel.id, channel.avatar, videos]);
 
   // Dedicated Channel Shorts state and live fetch
   const [channelSpecificShorts, setChannelSpecificShorts] = useState<Video[]>([]);
@@ -367,21 +395,22 @@ export const ChannelView: React.FC = () => {
       </div>
 
       {/* 1. CHANNEL BANNER HEADER */}
-      <div className="relative w-full h-32 sm:h-48 md:h-64 lg:h-72 bg-gradient-to-r from-gray-900 via-gray-800 to-black overflow-hidden select-none">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={
-            channel.banner ||
-            `https://picsum.photos/seed/${encodeURIComponent(channel.title)}/1600/500`
-          }
-          alt={`${channel.title} Banner`}
-          className="w-full h-full object-cover opacity-80"
-          referrerPolicy="no-referrer"
-          onError={(e) => {
-            e.currentTarget.src = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1600&auto=format&fit=crop&q=80';
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20" />
+      <div className="relative w-full h-32 sm:h-48 md:h-64 lg:h-72 bg-gradient-to-r from-[#181818] via-[#222222] to-[#141414] overflow-hidden select-none">
+        {channel.banner && !channel.banner.includes('photo-1618005182384') ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={channel.banner}
+            alt={`${channel.title} Banner`}
+            className="w-full h-full object-cover transition-opacity duration-300"
+            referrerPolicy="no-referrer"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-r from-[#181818] via-[#232323] to-[#161616]" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20 pointer-events-none" />
       </div>
 
       {/* 2. CHANNEL PROFILE INFO SECTION (YouTube Format) */}
@@ -391,7 +420,7 @@ export const ChannelView: React.FC = () => {
           <div className="relative shrink-0 -mt-12 sm:-mt-16 ring-4 ring-white dark:ring-[#0f0f0f] rounded-full overflow-hidden shadow-xl bg-gray-800">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={channel.avatar}
+              src={channel.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(channel.title || 'YT')}&backgroundColor=e11d48,2563eb,d97706`}
               alt={channel.title}
               className="w-24 h-24 sm:w-32 sm:h-32 md:w-36 md:h-36 object-cover rounded-full bg-gray-900 shadow-md"
               referrerPolicy="no-referrer"
@@ -424,11 +453,27 @@ export const ChannelView: React.FC = () => {
 
             {/* Handle & Stats Line */}
             <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1 flex-wrap font-medium">
-              <span className="font-semibold text-gray-900 dark:text-gray-200">{channel.handle || `@${channel.title.replace(/\s+/g, '').toLowerCase()}`}</span>
+              <span className="font-semibold text-gray-900 dark:text-gray-200">
+                {channel.handle || (channel.title ? `@${channel.title.replace(/\s+/g, '').toLowerCase()}` : '')}
+              </span>
               <span>&bull;</span>
-              <span>{channel.subscribers} subscribers</span>
+              {channel.subscribers ? (
+                <span>
+                  {channel.subscribers.toLowerCase().includes('sub') || channel.subscribers.toLowerCase().includes('pelanggan')
+                    ? channel.subscribers
+                    : `${channel.subscribers} subscribers`}
+                </span>
+              ) : (
+                <span className="inline-block w-20 h-4 bg-gray-200 dark:bg-[#282828] rounded animate-pulse align-middle" />
+              )}
               <span>&bull;</span>
-              <span>{channel.videosCount || channelVideos.length || 50} videos</span>
+              {channel.videosCount > 0 ? (
+                <span>{channel.videosCount} videos</span>
+              ) : channelVideos.length > 0 ? (
+                <span>{channelVideos.length} videos</span>
+              ) : (
+                <span className="inline-block w-14 h-4 bg-gray-200 dark:bg-[#282828] rounded animate-pulse align-middle" />
+              )}
             </div>
 
             {/* Description Excerpt */}
@@ -436,10 +481,16 @@ export const ChannelView: React.FC = () => {
               onClick={() => setIsAboutModalOpen(true)}
               className="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-300 line-clamp-2 max-w-3xl cursor-pointer hover:text-gray-900 dark:hover:text-white transition-colors group flex items-baseline gap-1"
             >
-              <span>{channel.description || 'Welcome to the official channel. Stream high quality videos, tutorials and playlists.'}</span>
-              <span className="font-bold text-gray-800 dark:text-gray-200 group-hover:underline inline-flex items-center text-xs">
-                ...more <ChevronRight className="w-3.5 h-3.5 inline" />
-              </span>
+              {channel.description ? (
+                <span>{channel.description}</span>
+              ) : (
+                <span className="inline-block w-64 h-3.5 bg-gray-200 dark:bg-[#282828] rounded animate-pulse align-middle" />
+              )}
+              {channel.description && (
+                <span className="font-bold text-gray-800 dark:text-gray-200 group-hover:underline inline-flex items-center text-xs">
+                  ...more <ChevronRight className="w-3.5 h-3.5 inline" />
+                </span>
+              )}
             </div>
 
             {/* Action Buttons: Subscribe, Bell, Share */}
@@ -720,7 +771,9 @@ export const ChannelView: React.FC = () => {
                               {short.title}
                             </p>
                             <span className="text-gray-300 text-[10px] mt-1 font-medium">
-                              {short.views ? new Intl.NumberFormat().format(short.views) : '120K'} views
+                              {short.views
+                                ? `${new Intl.NumberFormat('en', { notation: 'compact' }).format(short.views)} views`
+                                : 'Shorts'}
                             </span>
                           </div>
                         </div>
@@ -836,7 +889,9 @@ export const ChannelView: React.FC = () => {
                             {short.title}
                           </p>
                           <span className="text-gray-300 text-[10px] mt-1 font-medium">
-                            {short.views ? new Intl.NumberFormat().format(short.views) : '120K'} views
+                            {short.views
+                              ? `${new Intl.NumberFormat('en', { notation: 'compact' }).format(short.views)} views`
+                              : 'Shorts'}
                           </span>
                         </div>
                       </div>
