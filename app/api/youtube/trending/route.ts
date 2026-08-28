@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import YouTube from 'youtube-sr';
 import { parseYouTubeViews } from '@/lib/youtube-views';
 import { isFreshAndHotVideo } from '@/lib/video-freshness';
+import { safeFetchYouTube } from '@/lib/youtube-fetch';
 
 // Diverse topic pools for dynamic and ever-fresh YouTube Home Feed recommendations
 const MASTER_TOPIC_POOLS: Record<string, string[]> = {
@@ -100,19 +101,10 @@ function getRandomQueries(explicitCategory?: string, page: number = 1): { catego
 // Helper to scrape YouTube HTML for fast, rich results without library crashes
 async function searchHtmlScraper(query: string, category: string, limit = 12): Promise<any[]> {
   try {
-    const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
-    const res = await fetch(searchUrl, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
-      },
-      cache: 'no-store',
-    });
+    const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&sp=EgIQAQ%253D%253D`;
+    const html = await safeFetchYouTube(searchUrl, 2, 6000);
+    if (!html) return [];
 
-    if (!res.ok) return [];
-
-    const html = await res.text();
     const match =
       html.match(/var ytInitialData = ({[\s\S]*?});<\/script>/) ||
       html.match(/window\["ytInitialData"\] = ({[\s\S]*?});<\/script>/) ||
