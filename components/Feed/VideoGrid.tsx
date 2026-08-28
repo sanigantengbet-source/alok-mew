@@ -194,10 +194,11 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
     // Standard Home category filter
     if (selectedCategory && selectedCategory !== 'All') {
       const cleanCategory = selectedCategory.replace(/^[^\w\s]+/, '').trim().toLowerCase();
-      displayedVideos = displayedVideos.filter((v) => {
+      const filtered = displayedVideos.filter((v) => {
         if (v.category === selectedCategory) return true;
         const lowerTitle = v.title.toLowerCase();
         const tags = v.tags ? v.tags.map((t) => t.toLowerCase()) : [];
+        const channel = v.channelTitle.toLowerCase();
 
         if (selectedCategory.includes('Rame') || selectedCategory.includes('Viral')) {
           return (
@@ -207,7 +208,7 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
             lowerTitle.includes('viral') ||
             lowerTitle.includes('rame') ||
             lowerTitle.includes('trending') ||
-            v.views > 500000
+            v.views > 300000
           );
         }
 
@@ -216,13 +217,15 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
             tags.includes('tiktok') ||
             tags.includes('viral') ||
             lowerTitle.includes('tiktok') ||
-            lowerTitle.includes('sound')
+            lowerTitle.includes('sound') ||
+            v.category === 'Music'
           );
         }
 
         if (selectedCategory === 'Live Replay') {
           return (
             v.category === 'Live Replay' ||
+            v.isLive ||
             tags.includes('live') ||
             tags.includes('replay') ||
             lowerTitle.includes('live') ||
@@ -230,18 +233,35 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
           );
         }
 
+        if (selectedCategory === 'News') {
+          return (
+            v.category === 'News' ||
+            v.isLive ||
+            tags.includes('news') ||
+            tags.includes('berita') ||
+            lowerTitle.includes('berita') ||
+            lowerTitle.includes('live') ||
+            channel.includes('kompas') ||
+            channel.includes('cnn')
+          );
+        }
+
         return (
           tags.some((t) => t.includes(cleanCategory)) ||
           lowerTitle.includes(cleanCategory) ||
+          channel.includes(cleanCategory) ||
           (v.category && v.category.toLowerCase().includes(cleanCategory))
         );
       });
+
+      // If category filter returned items, use them; otherwise use top videos to prevent blank screen
+      displayedVideos = filtered.length > 0 ? filtered : [...videos];
     }
 
-    // Strictly enforce freshness on home feed to remove 1-5 year old stale videos
+    // Strictly enforce freshness on home feed when videos are abundant
     if (!searchQuery.trim()) {
       const freshOnly = filterFreshVideos(displayedVideos);
-      if (freshOnly.length > 0) {
+      if (freshOnly.length >= 6) {
         displayedVideos = freshOnly;
       }
     }
