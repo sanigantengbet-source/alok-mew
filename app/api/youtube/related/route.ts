@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import YouTube from 'youtube-sr';
 import { parseYouTubeViews } from '@/lib/youtube-views';
+import { safeFetchYouTube } from '@/lib/youtube-fetch';
 
 // Helper to clean and sanitize title for search queries
 function getSearchKeywords(title: string, channelTitle: string): string {
@@ -20,18 +21,9 @@ function getSearchKeywords(title: string, channelTitle: string): string {
 async function scrapeRelatedFromWatchPage(videoId: string) {
   try {
     const watchUrl = `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
-    const res = await fetch(watchUrl, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
-      },
-      cache: 'no-store',
-    });
+    const html = await safeFetchYouTube(watchUrl, 2, 6000);
+    if (!html) return [];
 
-    if (!res.ok) return [];
-
-    const html = await res.text();
     const match =
       html.match(/var ytInitialData = ({[\s\S]*?});<\/script>/) ||
       html.match(/window\["ytInitialData"\] = ({[\s\S]*?});<\/script>/) ||
@@ -123,8 +115,7 @@ async function scrapeRelatedFromWatchPage(videoId: string) {
 
     walk(data?.contents?.twoColumnWatchNextResults?.secondaryResults || data);
     return results;
-  } catch (err) {
-    console.warn('Watch page recommendation scraper notice:', err);
+  } catch {
     return [];
   }
 }
@@ -132,19 +123,10 @@ async function scrapeRelatedFromWatchPage(videoId: string) {
 // Scrape YouTube HTML search as guaranteed fallback
 async function searchRelatedViaHTML(query: string, currentVideoId: string, limit = 16) {
   try {
-    const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
-    const res = await fetch(searchUrl, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
-      },
-      cache: 'no-store',
-    });
+    const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&sp=EgIQAQ%253D%253D`;
+    const html = await safeFetchYouTube(searchUrl, 2, 5000);
+    if (!html) return [];
 
-    if (!res.ok) return [];
-
-    const html = await res.text();
     const match =
       html.match(/var ytInitialData = ({[\s\S]*?});<\/script>/) ||
       html.match(/window\["ytInitialData"\] = ({[\s\S]*?});<\/script>/) ||
