@@ -190,29 +190,34 @@ export const WatchPage: React.FC = () => {
     };
   }, [activeVideoId, activeYoutubeId]);
 
-  // If subscriber count is still default, fetch channel info to get exact live subscriber number
+  // Always fetch real-time live channel details (authentic exact subscribers & avatar) directly from YouTube
   useEffect(() => {
     if (!activeVideoId) return;
-    const currentSubs = liveDetails?.subscriberCount || activeVideoSubs;
-    if (!currentSubs || currentSubs === '100K+' || currentSubs === '500K+') {
-      const rawChanId = activeChannelId || '';
-      const rawChanTitle = activeChannelTitle || '';
-      if (rawChanId || rawChanTitle) {
-        fetch(`/api/youtube/channel?id=${encodeURIComponent(rawChanId)}&title=${encodeURIComponent(rawChanTitle)}`)
-          .then((res) => res.json())
-          .then((data) => {
-            if (data?.channel?.subscribers) {
-              setLiveDetails((prev) => ({
-                ...prev,
-                subscriberCount: data.channel.subscribers,
-                channelAvatar: data.channel.avatar || prev?.channelAvatar,
-              }));
-            }
-          })
-          .catch(() => {});
-      }
+    let isSubscribed = true;
+
+    const rawChanId = activeChannelId || '';
+    const rawChanTitle = activeChannelTitle || '';
+    const query = rawChanTitle || rawChanId;
+
+    if (query) {
+      fetch(`/api/youtube/channel?q=${encodeURIComponent(query)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (isSubscribed && data?.channel) {
+            setLiveDetails((prev) => ({
+              ...prev,
+              subscriberCount: data.channel.subscribers || prev?.subscriberCount,
+              channelAvatar: data.channel.avatar || prev?.channelAvatar,
+            }));
+          }
+        })
+        .catch(() => {});
     }
-  }, [activeVideoId, activeChannelId, activeChannelTitle, activeVideoSubs, liveDetails?.subscriberCount]);
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, [activeVideoId, activeChannelId, activeChannelTitle]);
 
   const handleTopDragStart = (e: React.TouchEvent) => {
     setTouchStartY(e.touches[0].clientY);
@@ -442,13 +447,20 @@ export const WatchPage: React.FC = () => {
               <button
                 id="watch-subscribe-btn"
                 onClick={() => toggleSubscribe(activeVideo.channelId)}
-                className={`ml-2 px-4 py-2 rounded-full text-xs font-semibold transition-all shadow-xs ${
+                className={`ml-2 px-4 py-2 rounded-full text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95 ${
                   isSubscribed
-                    ? 'bg-gray-100 dark:bg-[#272727] text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-[#333]'
+                    ? 'bg-gray-200 dark:bg-[#272727] text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-[#333]'
                     : 'bg-black text-white dark:bg-white dark:text-black hover:opacity-90'
                 }`}
               >
-                {isSubscribed ? 'Subscribed' : 'Subscribe'}
+                {isSubscribed ? (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-blue-500 fill-blue-500/20" />
+                    <span>Disubscribe</span>
+                  </>
+                ) : (
+                  <span>Subscribe</span>
+                )}
               </button>
             </div>
 
@@ -459,18 +471,18 @@ export const WatchPage: React.FC = () => {
                 <button
                   id="watch-like-btn"
                   onClick={() => toggleLikeVideo(activeVideo.id, activeVideo)}
-                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-l-full text-xs font-semibold transition-colors hover:bg-gray-200 dark:hover:bg-[#333] ${
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-l-full text-xs font-semibold transition-colors hover:bg-gray-200 dark:hover:bg-[#333] cursor-pointer active:scale-95 ${
                     isLiked ? 'text-blue-600 dark:text-blue-400' : 'text-gray-800 dark:text-gray-200'
                   }`}
                 >
                   <ThumbsUp className={`w-4 h-4 ${isLiked ? 'fill-blue-600 dark:fill-blue-400' : ''}`} />
-                  <span>{formatCompactViews(displayLikes)}</span>
+                  <span>{formatCompactViews(displayLikes + (isLiked ? 1 : 0))}</span>
                 </button>
                 <div className="w-px h-5 bg-gray-300 dark:bg-[#3e3e3e]" />
                 <button
                   id="watch-dislike-btn"
                   onClick={() => toggleDislikeVideo(activeVideo.id)}
-                  className={`px-3 py-1.5 rounded-r-full text-xs font-semibold transition-colors hover:bg-gray-200 dark:hover:bg-[#333] ${
+                  className={`px-3 py-1.5 rounded-r-full text-xs font-semibold transition-colors hover:bg-gray-200 dark:hover:bg-[#333] cursor-pointer active:scale-95 ${
                     isDisliked ? 'text-red-500' : 'text-gray-800 dark:text-gray-200'
                   }`}
                 >
