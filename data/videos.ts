@@ -17,93 +17,7 @@ export const CATEGORIES = [
 ];
 
 export const INITIAL_VIDEOS: Video[] = [
-  // 1. LIVE NEWS & NEWS CATEGORY
-  {
-    id: 'yt-jfKfPfyJRdk',
-    youtubeId: 'jfKfPfyJRdk',
-    title: 'LIVE STREAMING: Siaran Langsung Berita Terkini Indonesia 24 Jam Nonstop - KOMPAS TV',
-    description: 'Saksikan siaran langsung Kompas TV 24 jam non-stop menyajikan berita terkini, peristiwa hangat tanah air, politik, ekonomi, dan investigasi mendalam.',
-    channelTitle: 'KOMPAS TV',
-    channelId: 'c-kompas-tv',
-    channelAvatar: 'https://picsum.photos/seed/kompastv/200/200',
-    subscriberCount: '17.2M',
-    verified: true,
-    thumbnailUrl: 'https://i.ytimg.com/vi/jfKfPfyJRdk/hqdefault.jpg',
-    views: 1250000,
-    likes: 48000,
-    dislikes: 120,
-    uploadedAt: 'Live sekarang',
-    duration: 'LIVE',
-    category: 'News',
-    tags: ['Live', 'News', 'Berita', 'Live News', 'Kompas TV', 'Breaking News', 'Live Replay'],
-    commentsCount: 1420,
-    isLive: true,
-  },
-  {
-    id: 'yt-8eL39V9p1lU',
-    youtubeId: '8eL39V9p1lU',
-    title: 'CNN Indonesia LIVE: Update Berita Nasional, Ekonomi, dan Dunia Hari Ini',
-    description: 'Update live streaming terkini dari studio CNN Indonesia dengan liputan mendalam dari jurnalis di seluruh penjuru negeri.',
-    channelTitle: 'CNN Indonesia',
-    channelId: 'c-cnn-indonesia',
-    channelAvatar: 'https://picsum.photos/seed/cnnindonesia/200/200',
-    subscriberCount: '11.4M',
-    verified: true,
-    thumbnailUrl: 'https://i.ytimg.com/vi/8eL39V9p1lU/hqdefault.jpg',
-    views: 890000,
-    likes: 32000,
-    dislikes: 90,
-    uploadedAt: 'Live sekarang',
-    duration: 'LIVE',
-    category: 'News',
-    tags: ['Live', 'News', 'Berita Terkini', 'CNN Indonesia', 'Live News', 'Politik'],
-    commentsCount: 980,
-    isLive: true,
-  },
-
-  // 2. SEBASTIAN TEDY & CREATOR VIDEOS
-  {
-    id: 'yt-eVTXPUF4Oz4',
-    youtubeId: 'eVTXPUF4Oz4',
-    title: 'VLOG HARIAN SERU: Eksplorasi Tempat Baru & Cerita Menarik Bareng Teman!',
-    description: 'Halo semuanya! Kali ini kita jalan-jalan santai sambil bahas hal-hal menarik yang lagi rame di media sosial. Jangan lupa like & subscribe!',
-    channelTitle: 'Sebastian Tedy',
-    channelId: 'c-sebastian-tedy',
-    channelAvatar: 'https://picsum.photos/seed/sebastiantedy/200/200',
-    subscriberCount: '650K',
-    verified: true,
-    thumbnailUrl: 'https://i.ytimg.com/vi/eVTXPUF4Oz4/hqdefault.jpg',
-    views: 450000,
-    likes: 24000,
-    dislikes: 45,
-    uploadedAt: '2 hari yang lalu',
-    duration: '14:22',
-    category: 'Entertainment',
-    tags: ['Sebastian Tedy', 'Vlog', 'Entertainment', 'Viral', 'Trending'],
-    commentsCount: 380,
-  },
-  {
-    id: 'yt-87krDLLWRys',
-    youtubeId: '87krDLLWRys',
-    title: 'TANTANGAN SPESIAL: Coba Hal Baru yang Belum Pernah Dilakukan Sebelumnya!',
-    description: 'Di video kali ini Sebastian Tedy mengajak kalian melihat keseruan tantangan unik yang bikin deg-degan!',
-    channelTitle: 'Sebastian Tedy',
-    channelId: 'c-sebastian-tedy',
-    channelAvatar: 'https://picsum.photos/seed/sebastiantedy/200/200',
-    subscriberCount: '650K',
-    verified: true,
-    thumbnailUrl: 'https://i.ytimg.com/vi/87krDLLWRys/hqdefault.jpg',
-    views: 380000,
-    likes: 19500,
-    dislikes: 30,
-    uploadedAt: '4 hari yang lalu',
-    duration: '11:45',
-    category: 'Entertainment',
-    tags: ['Sebastian Tedy', 'Tantangan', 'Keseruan', 'Viral'],
-    commentsCount: 290,
-  },
-
-  // 3. VIRAL & TIKTOK HITS & TRENDING
+  // 1. VIRAL & TIKTOK HITS & TRENDING
   {
     id: 'yt-kPa7bsKwL-c',
     youtubeId: 'kPa7bsKwL-c',
@@ -165,7 +79,49 @@ export const INITIAL_VIDEOS: Video[] = [
     commentsCount: 18500,
   },
 
-  // 4. GAMING
+  // 2. SEBASTIAN TEDY & CREATOR VIDEOS
+  {
+    id: 'yt-eVTXPUF4Oz4',
+    youtubeId: 'eVTXPUF4Oz4',
+    title: 'VLOG HARIAN SERU: Eksplorasi Tempat Baru & Cerita Menarik Bareng Teman!',
+    description: 'Halo semuanya! Kali ini kita jalan-jalan santai sambil bahas hal-hal menarik yang lagi rame di media sosial. Jangan lupa like & subscribe!',
+    channelTitle: 'Sebastian Tedy',
+    channelId: 'c-sebastian-tedy',
+    channelAvatar: 'https://picsum.photos/seed/sebastiantedy/200/200',
+    subscriberCount: '650K',
+    verified: true,
+    thumbnailUrl: 'https://i.ytimg.com/vi/eVTXPUF4Oz4/hqdefault.jpg',
+    views: 450000,
+    likes: 24000,
+    dislikes: 45,
+    uploadedAt: '2 hari yang lalu',
+    duration: '14:22',
+    category: 'Entertainment',
+    tags: ['Sebastian Tedy', 'Vlog', 'Entertainment', 'Viral', 'Trending'],
+    commentsCount: 380,
+  },
+  {
+    id: 'yt-87krDLLWRys',
+    youtubeId: '87krDLLWRys',
+    title: 'TANTANGAN SPESIAL: Coba Hal Baru yang Belum Pernah Dilakukan Sebelumnya!',
+    description: 'Di video kali ini Sebastian Tedy mengajak kalian melihat keseruan tantangan unik yang bikin deg-degan!',
+    channelTitle: 'Sebastian Tedy',
+    channelId: 'c-sebastian-tedy',
+    channelAvatar: 'https://picsum.photos/seed/sebastiantedy/200/200',
+    subscriberCount: '650K',
+    verified: true,
+    thumbnailUrl: 'https://i.ytimg.com/vi/87krDLLWRys/hqdefault.jpg',
+    views: 380000,
+    likes: 19500,
+    dislikes: 30,
+    uploadedAt: '4 hari yang lalu',
+    duration: '11:45',
+    category: 'Entertainment',
+    tags: ['Sebastian Tedy', 'Tantangan', 'Keseruan', 'Viral'],
+    commentsCount: 290,
+  },
+
+  // 3. GAMING
   {
     id: 'yt-5qap5aO4i9A',
     youtubeId: '5qap5aO4i9A',
@@ -187,7 +143,7 @@ export const INITIAL_VIDEOS: Video[] = [
     commentsCount: 9400,
   },
 
-  // 5. TECH & GADGETS
+  // 4. TECH & GADGETS
   {
     id: 'yt-tgbNymZ7vqY',
     youtubeId: 'tgbNymZ7vqY',
@@ -209,7 +165,7 @@ export const INITIAL_VIDEOS: Video[] = [
     commentsCount: 7800,
   },
 
-  // 6. PODCASTS & ENTERTAINMENT
+  // 5. PODCASTS & ENTERTAINMENT
   {
     id: 'yt-L_LUpnjgPso',
     youtubeId: 'L_LUpnjgPso',
@@ -231,7 +187,7 @@ export const INITIAL_VIDEOS: Video[] = [
     commentsCount: 4300,
   },
 
-  // 7. FOOD & KULINER
+  // 6. FOOD & KULINER
   {
     id: 'yt-9bZkp7q19f0',
     youtubeId: '9bZkp7q19f0',
@@ -251,6 +207,50 @@ export const INITIAL_VIDEOS: Video[] = [
     category: 'Food',
     tags: ['Food', 'Tanboy Kun', 'Mukbang', 'Kuliner', 'Pedas', 'Viral'],
     commentsCount: 6500,
+  },
+
+  // 7. LIVE NEWS & NEWS CATEGORY
+  {
+    id: 'yt-jfKfPfyJRdk',
+    youtubeId: 'jfKfPfyJRdk',
+    title: 'LIVE STREAMING: Siaran Langsung Berita Terkini Indonesia 24 Jam Nonstop - KOMPAS TV',
+    description: 'Saksikan siaran langsung Kompas TV 24 jam non-stop menyajikan berita terkini, peristiwa hangat tanah air, politik, ekonomi, dan investigasi mendalam.',
+    channelTitle: 'KOMPAS TV',
+    channelId: 'c-kompas-tv',
+    channelAvatar: 'https://picsum.photos/seed/kompastv/200/200',
+    subscriberCount: '17.2M',
+    verified: true,
+    thumbnailUrl: 'https://i.ytimg.com/vi/jfKfPfyJRdk/hqdefault.jpg',
+    views: 1250000,
+    likes: 48000,
+    dislikes: 120,
+    uploadedAt: 'Live sekarang',
+    duration: 'LIVE',
+    category: 'News',
+    tags: ['Live', 'News', 'Berita', 'Live News', 'Kompas TV', 'Breaking News', 'Live Replay'],
+    commentsCount: 1420,
+    isLive: true,
+  },
+  {
+    id: 'yt-8eL39V9p1lU',
+    youtubeId: '8eL39V9p1lU',
+    title: 'CNN Indonesia LIVE: Update Berita Nasional, Ekonomi, dan Dunia Hari Ini',
+    description: 'Update live streaming terkini dari studio CNN Indonesia dengan liputan mendalam dari jurnalis di seluruh penjuru negeri.',
+    channelTitle: 'CNN Indonesia',
+    channelId: 'c-cnn-indonesia',
+    channelAvatar: 'https://picsum.photos/seed/cnnindonesia/200/200',
+    subscriberCount: '11.4M',
+    verified: true,
+    thumbnailUrl: 'https://i.ytimg.com/vi/8eL39V9p1lU/hqdefault.jpg',
+    views: 890000,
+    likes: 32000,
+    dislikes: 90,
+    uploadedAt: 'Live sekarang',
+    duration: 'LIVE',
+    category: 'News',
+    tags: ['Live', 'News', 'Berita Terkini', 'CNN Indonesia', 'Live News', 'Politik'],
+    commentsCount: 980,
+    isLive: true,
   },
 ];
 
