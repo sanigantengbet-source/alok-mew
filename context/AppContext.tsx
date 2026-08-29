@@ -198,7 +198,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [savedVideosMap, setSavedVideosMap] = useState<Record<string, Video>>({});
   const [comments, setComments] = useState<Record<string, Comment[]>>(INITIAL_COMMENTS);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState<boolean>(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState<boolean>(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
@@ -303,7 +303,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (Array.isArray(savedWatchLater)) setWatchLaterIds(savedWatchLater);
           if (Array.isArray(savedHistory)) setHistoryVideoIds(savedHistory);
           if (savedSavedVideos && typeof savedSavedVideos === 'object') setSavedVideosMap(savedSavedVideos);
-          if (typeof savedDark === 'boolean') setIsDarkMode(savedDark);
+          if (typeof savedDark === 'boolean') {
+            setIsDarkMode(savedDark);
+          } else {
+            try {
+              const localDark = localStorage.getItem('nexttube_dark_mode');
+              if (localDark === 'false') {
+                setIsDarkMode(false);
+              } else {
+                setIsDarkMode(true);
+              }
+            } catch {
+              setIsDarkMode(true);
+            }
+          }
           if (Array.isArray(savedSearchHist)) {
             // Filter out any leftover initial mock search items
             const cleanedHistory = savedSearchHist.filter(
@@ -561,8 +574,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
+      try {
+        localStorage.setItem('nexttube_dark_mode', 'true');
+      } catch {}
     } else {
       document.documentElement.classList.remove('dark');
+      try {
+        localStorage.setItem('nexttube_dark_mode', 'false');
+      } catch {}
     }
   }, [isDarkMode]);
 
