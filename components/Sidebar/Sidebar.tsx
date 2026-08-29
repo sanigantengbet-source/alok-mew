@@ -229,7 +229,7 @@ export const Sidebar: React.FC = () => {
         >
           <div className="flex items-center gap-2.5 min-w-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icon.svg" alt="App Icon" className="w-5 h-5 shrink-0 rounded-md object-contain" />
+            <img src="/icon.svg" alt="App Icon" className="w-5 h-5 shrink-0 object-contain" />
             <div className="min-w-0">
               <p className="text-xs font-bold text-gray-900 dark:text-white truncate group-hover:text-red-500 transition-colors">
                 Install NextTube
