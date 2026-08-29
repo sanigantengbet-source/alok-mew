@@ -1,27 +1,156 @@
-
-<svg width="600" height="200" viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg">
+<svg width="600" height="200" viewBox="0 0 600 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(10, 10) scale(0.175)">
+    
   <defs>
-    <linearGradient id="logoBgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#FF1A38"/>
-      <stop offset="100%" stop-color="#E50024"/>
+    <!-- Left Pillar Red Gradient -->
+    <linearGradient id="pillGrad" x1="240" y1="200" x2="440" y2="780" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FF2438"/>
+      <stop offset="35%" stop-color="#FF0D25"/>
+      <stop offset="85%" stop-color="#E6001B"/>
+      <stop offset="100%" stop-color="#CC0018"/>
     </linearGradient>
-    <filter id="logoDropShadow" x="-10%" y="-10%" width="120%" height="130%" filterUnits="userSpaceOnUse">
-      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000000" flood-opacity="0.2"/>
-    </filter>
+
+    <!-- Top Diagonal Ribbon Gradient -->
+    <linearGradient id="topRibbonGrad" x1="420" y1="210" x2="800" y2="520" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#D9001A"/>
+      <stop offset="50%" stop-color="#FF1A33"/>
+      <stop offset="100%" stop-color="#FF263B"/>
+    </linearGradient>
+
+    <!-- Bottom Diagonal Ribbon Gradient -->
+    <linearGradient id="bottomRibbonGrad" x1="330" y1="780" x2="810" y2="490" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#D60018"/>
+      <stop offset="40%" stop-color="#F2001F"/>
+      <stop offset="80%" stop-color="#FF1C35"/>
+      <stop offset="100%" stop-color="#FF263B"/>
+    </linearGradient>
+
+    <!-- 3D Fold Crease Shadow under top cap -->
+    <linearGradient id="creaseShadow" x1="380" y1="200" x2="520" y2="380" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#73000C"/>
+      <stop offset="30%" stop-color="#990013"/>
+      <stop offset="70%" stop-color="#CC001A" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#FF1028" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Subtle Inner Bevel / Ambient Shading -->
+    <linearGradient id="innerEdgeShadow" x1="680" y1="520" x2="430" y2="640" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#A80015" stop-opacity="0.6"/>
+      <stop offset="60%" stop-color="#D9001C" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#FF0022" stop-opacity="0"/>
+    </linearGradient>
   </defs>
 
-  <g filter="url(#logoDropShadow)">
-    <rect x="20" y="25" width="150" height="150" rx="38" fill="url(#logoBgGrad)"/>
+  <!-- 1. Bottom & Outer Loop Connecting to Right Apex -->
+  <!-- Sweeps from bottom rounded cap up through right apex and back around -->
+  <path d="M 335 785
+           C 280 785 240 740 240 680
+           L 240 330
+           C 240 270 280 225 335 225
+           C 375 225 410 248 435 285
+           L 780 475
+           C 815 495 815 525 780 545
+           L 435 735
+           C 405 768 370 785 335 785 Z"
+        fill="url(#bottomRibbonGrad)" />
+
+  <!-- 2. Top-Right Ribbon Layer with Crease -->
+  <path d="M 370 230
+           L 780 475
+           C 815 495 815 525 780 545
+           L 645 510
+           C 630 504 620 496 610 490
+           L 442 388
+           C 442 388 385 255 370 230 Z"
+        fill="url(#topRibbonGrad)" />
+
+  <!-- 3. Realistic 3D Fold & Crease Shadow on Top Ribbon -->
+  <path d="M 360 226
+           C 390 245 425 295 444 390
+           L 540 450
+           C 490 350 435 270 360 226 Z"
+        fill="url(#creaseShadow)" />
+
+  <!-- 4. Inner Triangle Cutout (Creates True Transparent Hole) -->
+  <!-- Masked via Negative Fill / Compound Path -->
+  <mask id="cutoutMask">
+    <rect width="1024" height="1024" fill="white" />
+    <!-- Rounded Inner Triangular Hole -->
+    <path d="M 444 396
+             C 444 382 458 375 470 382
+             L 652 490
+             C 664 497 664 513 652 520
+             L 470 628
+             C 458 635 444 628 444 614
+             Z"
+          fill="black" />
+  </mask>
+
+  <!-- 5. Re-rendered with Cutout Hole -->
+  <g mask="url(#cutoutMask)">
+    <!-- Bottom Ribbon -->
+    <path d="M 335 785
+             C 275 785 240 735 240 675
+             L 240 335
+             C 240 275 275 225 335 225
+             C 380 225 415 250 440 290
+             L 780 475
+             C 815 495 815 525 780 545
+             L 435 735
+             C 405 768 370 785 335 785 Z"
+          fill="url(#bottomRibbonGrad)" />
+
+    <!-- Top Ribbon Band -->
+    <path d="M 365 228
+             C 410 252 440 290 440 290
+             L 780 475
+             C 815 495 815 525 780 545
+             L 645 510
+             L 444 390
+             L 365 228 Z"
+          fill="url(#topRibbonGrad)" />
+
+    <!-- Top Fold Shadow overlay -->
+    <path d="M 358 226
+             L 444 394
+             L 570 470
+             C 500 370 435 280 358 226 Z"
+          fill="url(#creaseShadow)" />
+
+    <!-- Inner Bottom Edge Ambient Shadow -->
+    <path d="M 444 614
+             L 652 520
+             L 590 560
+             L 444 635 Z"
+          fill="url(#innerEdgeShadow)" />
+
+    <!-- 6. Left Vertical Pill (Foreground Element) -->
+    <!-- Pill Capsule from x=240 to x=444, y=225 to y=785 -->
+    <path d="M 342 225
+             C 285 225 240 270 240 330
+             L 240 680
+             C 240 738 285 785 342 785
+             C 398 785 444 738 444 680
+             L 444 330
+             C 444 270 398 225 342 225 Z"
+          fill="url(#pillGrad)" />
+
+    <!-- Left Pillar Highlight Shading -->
+    <path d="M 342 225
+             C 285 225 240 270 240 330
+             L 240 680
+             C 240 738 285 785 342 785
+             C 358 785 372 778 384 765
+             C 295 750 262 690 262 640
+             L 262 360
+             C 262 300 300 245 375 230
+             C 364 227 353 225 342 225 Z"
+          fill="#FFFFFF"
+          opacity="0.12" />
   </g>
 
-  <g transform="translate(-52, -28) scale(0.64)">
-    <rect x="175" y="165" width="46" height="182" rx="23" fill="#FFFFFF"/>
-    <path d="M198 165 C208 165, 218 171, 226 178 L330 240 C345 249, 345 263, 330 272 L215 342 C204 349, 198 343, 198 332 Z" fill="#FFFFFF"/>
-    <path d="M198 230 L310 256 L198 320 Z" fill="#D9D9D9" opacity="0.85"/>
-    <path d="M198 165 L330 256 L198 245 Z" fill="#FFFFFF"/>
   </g>
-
-  <text x="195" y="126" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="800" font-size="78" letter-spacing="-1.5">
-    <tspan fill="#111111">Next</tspan><tspan fill="#FF1A38">Tube</tspan>
+  <text x="200" y="126" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="800" font-size="76" letter-spacing="-1.5">
+    <tspan fill="#111111" class="dark:fill-white">Next</tspan><tspan fill="#FF1E27">Tube</tspan>
   </text>
 </svg>
