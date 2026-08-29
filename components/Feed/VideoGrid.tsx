@@ -268,10 +268,10 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
   }
 
   // Prevent false empty state flashes:
-  // Skeletons are shown when loading is active, or while searching/filtering if content is still being fetched
+  // Skeletons are shown when loading is active on home feed, or while searching/filtering if content is still being fetched
   const shouldShowLoading = propLoading !== undefined
     ? propLoading
-    : (isLoadingVideos && (displayedVideos.length === 0 || isSearchActive));
+    : (isLoadingVideos && (currentView === 'home' || displayedVideos.length === 0 || isSearchActive));
 
   const handleDirectPlay = async (e: React.FormEvent) => {
     e.preventDefault();
