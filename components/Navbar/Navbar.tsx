@@ -113,7 +113,7 @@ export const Navbar: React.FC = () => {
 
   // Click outside listener
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
       if (appsMenuRef.current && !appsMenuRef.current.contains(e.target as Node)) {
         setIsAppsMenuOpen(false);
       }
@@ -125,7 +125,11 @@ export const Navbar: React.FC = () => {
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
   }, []);
 
   const executeSearch = (query: string) => {
@@ -513,7 +517,7 @@ export const Navbar: React.FC = () => {
           </button>
 
           {isNotificationsOpen && (
-            <div className="absolute right-0 mt-2 w-84 sm:w-96 bg-white dark:bg-[#212121] rounded-2xl shadow-2xl border border-gray-200 dark:border-[#383838] py-2 z-50 animate-in fade-in zoom-in-95 duration-150 overflow-hidden">
+            <div className="fixed inset-x-2.5 sm:inset-auto sm:right-0 sm:top-full top-14 mt-1 sm:mt-2 w-auto sm:w-96 max-w-[calc(100vw-20px)] sm:max-w-none bg-white dark:bg-[#212121] rounded-2xl shadow-2xl border border-gray-200 dark:border-[#383838] py-2 z-50 animate-in fade-in zoom-in-95 duration-150 overflow-hidden">
               {/* Header */}
               <div className="px-4 py-3 border-b border-gray-100 dark:border-[#303030] flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -555,7 +559,7 @@ export const Navbar: React.FC = () => {
               </div>
 
               {/* Body */}
-              <div className="max-h-96 overflow-y-auto divide-y divide-gray-100 dark:divide-[#282828] scrollbar-none">
+              <div className="max-h-[70vh] sm:max-h-96 overflow-y-auto divide-y divide-gray-100 dark:divide-[#282828] scrollbar-none">
                 {notifications.length === 0 ? (
                   <div className="px-6 py-10 text-center flex flex-col items-center">
                     <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-[#2a2a2a] flex items-center justify-center text-gray-400 dark:text-gray-500 mb-3">
