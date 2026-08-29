@@ -1,68 +1,62 @@
-<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <radialGradient id="redGrad" cx="50%" cy="40%" r="65%">
-      <stop offset="0%" stop-color="#FF1124"/>
-      <stop offset="70%" stop-color="#ED0015"/>
-      <stop offset="100%" stop-color="#D60012"/>
-    </radialGradient>
-    
-    <linearGradient id="innerShadowGrad" x1="20%" y1="20%" x2="85%" y2="85%">
-      <stop offset="0%" stop-color="#000000" stop-opacity="0.18"/>
-      <stop offset="40%" stop-color="#000000" stop-opacity="0.10"/>
-      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    <!-- Left Pillar Red Gradient -->
+    <linearGradient id="pillGrad" x1="240" y1="200" x2="440" y2="780" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FF2438"/>
+      <stop offset="35%" stop-color="#FF0D25"/>
+      <stop offset="85%" stop-color="#E6001B"/>
+      <stop offset="100%" stop-color="#CC0018"/>
     </linearGradient>
 
-    <linearGradient id="foldGrad" x1="30%" y1="40%" x2="90%" y2="80%">
-      <stop offset="0%" stop-color="#E1E6EB"/>
-      <stop offset="50%" stop-color="#CBD5E1"/>
-      <stop offset="100%" stop-color="#94A3B8"/>
+    <!-- Top Diagonal Ribbon Gradient -->
+    <linearGradient id="topRibbonGrad" x1="420" y1="210" x2="800" y2="520" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#D9001A"/>
+      <stop offset="50%" stop-color="#FF1A33"/>
+      <stop offset="100%" stop-color="#FF263B"/>
     </linearGradient>
-    
-    <filter id="softGlow" x="-10%" y="-10%" width="120%" height="120%">
-      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.25"/>
-    </filter>
+
+    <!-- Bottom Diagonal Ribbon Gradient -->
+    <linearGradient id="bottomRibbonGrad" x1="330" y1="780" x2="810" y2="490" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#D60018"/>
+      <stop offset="40%" stop-color="#F2001F"/>
+      <stop offset="80%" stop-color="#FF1C35"/>
+      <stop offset="100%" stop-color="#FF263B"/>
+    </linearGradient>
+
+    <!-- 3D Fold Crease Shadow under top cap -->
+    <linearGradient id="creaseShadow" x1="380" y1="200" x2="520" y2="380" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#73000C"/>
+      <stop offset="30%" stop-color="#990013"/>
+      <stop offset="70%" stop-color="#CC001A" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#FF1028" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Subtle Inner Bevel / Ambient Shading -->
+    <linearGradient id="innerEdgeShadow" x1="680" y1="520" x2="430" y2="640" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#A80015" stop-opacity="0.6"/>
+      <stop offset="60%" stop-color="#D9001C" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#FF0022" stop-opacity="0"/>
+    </linearGradient>
   </defs>
 
-  <!-- Red Squircle Base -->
-  <rect x="16" y="16" width="480" height="480" rx="140" fill="url(#redGrad)"/>
+  <mask id="cutoutMask">
+    <rect width="1024" height="1024" fill="white" />
+    <path d="M 444 396 C 444 382 458 375 470 382 L 652 490 C 664 497 664 513 652 520 L 470 628 C 458 635 444 628 444 614 Z" fill="black" />
+  </mask>
 
-  <!-- Logo Mark (Centered Origami Play Button) -->
-  <g filter="url(#softGlow)">
-    <!-- Base White Origami Polygon -->
-    <path d="M 200 135
-             C 186 135 176 146 176 160
-             L 176 340
-             C 176 354 187 365 201 365
-             L 315 365
-             C 345 365 365 342 355 315
-             C 352 308 348 301 342 294
-             L 242 162
-             C 232 145 218 135 200 135 Z"
-          fill="#FFFFFF" />
-
-    <!-- Left Vertical Stem Pill -->
-    <rect x="176" y="145" width="56" height="210" rx="28" fill="#FFFFFF" />
-
-    <!-- Origami Flap Fold (Curved Inner Shading) -->
-    <path d="M 224 220
-             C 224 260 250 320 345 340
-             C 358 335 362 322 354 312
-             L 242 165
-             C 230 152 224 165 224 185 Z"
-          fill="url(#foldGrad)"
-          opacity="0.9" />
-
-    <!-- Top White Cap & Crisp Edge -->
-    <path d="M 202 135
-             C 188 135 176 146 176 160
-             L 176 330
-             L 224 330
-             L 224 180
-             C 224 160 238 145 255 162
-             L 346 295
-             C 353 304 355 312 354 316
-             L 236 150
-             C 226 138 214 135 202 135 Z"
-          fill="#FFFFFF" />
+  <!-- Re-rendered Ribbon -->
+  <g mask="url(#cutoutMask)">
+    <!-- Bottom Ribbon Loop -->
+    <path d="M 335 785 C 275 785 240 735 240 675 L 240 335 C 240 275 275 225 335 225 C 380 225 415 250 440 290 L 780 475 C 815 495 815 525 780 545 L 435 735 C 405 768 370 785 335 785 Z" fill="url(#bottomRibbonGrad)" />
+    <!-- Top Ribbon Band -->
+    <path d="M 365 228 C 410 252 440 290 440 290 L 780 475 C 815 495 815 525 780 545 L 645 510 L 444 390 L 365 228 Z" fill="url(#topRibbonGrad)" />
+    <!-- Top Fold Shadow overlay -->
+    <path d="M 358 226 L 444 394 L 570 470 C 500 370 435 280 358 226 Z" fill="url(#creaseShadow)" />
+    <!-- Inner Bottom Edge Ambient Shadow -->
+    <path d="M 444 614 L 652 520 L 590 560 L 444 635 Z" fill="url(#innerEdgeShadow)" />
+    <!-- Foreground Pill Capsule -->
+    <path d="M 342 225 C 285 225 240 270 240 330 L 240 680 C 240 738 285 785 342 785 C 398 785 444 738 444 680 L 444 330 C 444 270 398 225 342 225 Z" fill="url(#pillGrad)" />
+    <!-- Left Pillar Highlight -->
+    <path d="M 342 225 C 285 225 240 270 240 330 L 240 680 C 240 738 285 785 342 785 C 358 785 372 778 384 765 C 295 750 262 690 262 640 L 262 360 C 262 300 300 245 375 230 C 364 227 353 225 342 225 Z" fill="#FFFFFF" opacity="0.12" />
   </g>
 </svg>
