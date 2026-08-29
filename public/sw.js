@@ -1,14 +1,15 @@
 // NextTube Service Worker for PWA Support
-const CACHE_NAME = 'nexttube-cache-v1';
+const CACHE_NAME = 'nexttube-cache-v2';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
+  '/maskable-icon-192.png',
+  '/maskable-icon-512.png',
   '/apple-touch-icon.png',
   '/nexttube-logo.png',
   '/icon.svg',
-  '/logo.svg',
 ];
 
 self.addEventListener('install', (event) => {
