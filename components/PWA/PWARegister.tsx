@@ -42,21 +42,29 @@ export const PWARegister = () => {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // Register Service Worker for PWA
+    // Robust Service Worker registration for PWA
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
+      const registerSW = () => {
         navigator.serviceWorker
-          .register('/sw.js')
+          .register('/sw.js', { scope: '/' })
           .then((registration) => {
             console.log('NextTube PWA ServiceWorker registered with scope:', registration.scope);
+            // Update SW if available
+            registration.update().catch(() => {});
           })
           .catch((error) => {
             console.warn('NextTube PWA ServiceWorker registration failed:', error);
           });
-      });
+      };
+
+      if (document.readyState === 'complete') {
+        registerSW();
+      } else {
+        window.addEventListener('load', registerSW);
+      }
     }
 
-    // Capture native beforeinstallprompt
+    // Capture native beforeinstallprompt for instant native app installation
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
@@ -72,8 +80,9 @@ export const PWARegister = () => {
 
     // Listen for custom install requests (from Sidebar, Settings, etc.)
     const handleOpenInstall = () => {
-      if ((window as any).__pwaDeferredPrompt) {
-        triggerNativeInstall((window as any).__pwaDeferredPrompt);
+      const prompt = deferredPrompt || (window as any).__pwaDeferredPrompt;
+      if (prompt) {
+        triggerNativeInstall(prompt);
       } else {
         setShowInstallModal(true);
       }
@@ -85,7 +94,7 @@ export const PWARegister = () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('open-pwa-install', handleOpenInstall);
     };
-  }, [isStandalone, triggerNativeInstall]);
+  }, [isStandalone, triggerNativeInstall, deferredPrompt]);
 
   const dismissBanner = () => {
     setShowInstallBanner(false);
@@ -106,9 +115,9 @@ export const PWARegister = () => {
           <div className="flex items-center gap-3 min-w-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/icon.svg"
-              alt="NextTube Logo"
-              className="w-9 h-9 rounded-xl shadow-xs shrink-0 object-contain"
+              src="/icon-192.png"
+              alt="NextTube App Icon"
+              className="w-9 h-9 shrink-0 object-contain rounded-xl shadow-xs"
             />
             <div className="min-w-0">
               <h4 className="text-xs font-bold text-gray-900 dark:text-white truncate">Install NextTube App</h4>
@@ -145,7 +154,7 @@ export const PWARegister = () => {
             <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-[#2d2d2d]">
               <div className="flex items-center gap-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/icon.svg" alt="NextTube" className="w-10 h-10 rounded-2xl shadow-sm object-contain" />
+                <img src="/icon-192.png" alt="NextTube" className="w-10 h-10 object-contain rounded-2xl shadow-xs" />
                 <div>
                   <h3 className="font-bold text-gray-900 dark:text-white text-base">Install NextTube</h3>
                   <p className="text-xs text-gray-500 dark:text-gray-400">Progressive Web App (PWA)</p>
