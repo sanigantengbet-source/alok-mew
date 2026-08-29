@@ -35,19 +35,21 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html className="dark" lang="en" suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
             __html: `
               try {
                 const dark = localStorage.getItem('nexttube_dark_mode');
-                if (dark === 'true' || (dark === null && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                  document.documentElement.classList.add('dark');
-                } else if (dark === 'false') {
+                if (dark === 'false') {
                   document.documentElement.classList.remove('dark');
+                } else {
+                  document.documentElement.classList.add('dark');
                 }
-              } catch (e) {}
+              } catch (e) {
+                document.documentElement.classList.add('dark');
+              }
             `,
           }}
         />
