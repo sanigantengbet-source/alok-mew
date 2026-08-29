@@ -33,7 +33,7 @@ export const NextTubeLogo: React.FC<NextTubeLogoProps> = ({
         <img
           src="/icon.svg"
           alt="NextTube Logo"
-          className="w-full h-full object-contain rounded-xl sm:rounded-2xl filter drop-shadow-md hover:scale-105 transition-transform duration-200"
+          className="w-full h-full object-contain filter drop-shadow-sm hover:scale-105 transition-transform duration-200"
         />
       </div>
 
