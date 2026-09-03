@@ -83,10 +83,32 @@ async function searchViaYouTubeHTML(query: string, limit = 40) {
         video.publishedTimeText?.simpleText ||
         (Array.isArray(video.publishedTimeText?.runs) ? video.publishedTimeText.runs.map((r: any) => r.text).join('') : '') ||
         'Baru saja';
-      const duration =
-        video.lengthText?.simpleText ||
-        (Array.isArray(video.lengthText?.runs) ? video.lengthText.runs.map((r: any) => r.text).join('') : '') ||
-        '10:00';
+      const hasLiveBadge =
+        video.badges?.some((b: any) => {
+          const label = b?.metadataBadgeRenderer?.label || b?.metadataBadgeRenderer?.style || '';
+          return /live/i.test(label);
+        }) ||
+        video.thumbnailOverlays?.some((o: any) => {
+          const style = o?.thumbnailOverlayTimeStatusRenderer?.style || '';
+          const text =
+            o?.thumbnailOverlayTimeStatusRenderer?.text?.runs?.[0]?.text ||
+            o?.thumbnailOverlayTimeStatusRenderer?.text?.simpleText ||
+            '';
+          return /live/i.test(style) || /live/i.test(text);
+        });
+
+      const isLive = Boolean(
+        hasLiveBadge ||
+        (!video.lengthText &&
+          (/\b(LIVE\s+STREAMING|SIARAN\s+LANGSUNG|24\s*JAM\s+NONSTOP)\b/i.test(title) ||
+           /(?:^|\s|🔴)LIVE\b/i.test(title)))
+      );
+
+      const duration = isLive
+        ? 'LIVE'
+        : video.lengthText?.simpleText ||
+          (Array.isArray(video.lengthText?.runs) ? video.lengthText.runs.map((r: any) => r.text).join('') : '') ||
+          '10:00';
       const thumb =
         video.thumbnail?.thumbnails?.[video.thumbnail.thumbnails.length - 1]?.url ||
         `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
@@ -114,6 +136,7 @@ async function searchViaYouTubeHTML(query: string, limit = 40) {
         category: 'Hasil Pencarian',
         tags: [channelTitle, 'Video', 'Pencarian'],
         commentsCount: Math.round(numericViews * 0.002) || 95,
+        isLive,
       });
     }
 
@@ -306,10 +329,11 @@ export async function GET(req: NextRequest) {
               likes: Math.floor((item.views || 40000) * 0.04) || 1200,
               dislikes: 12,
               uploadedAt: item.uploadedAt || 'Baru saja',
-              duration: item.durationFormatted || '10:00',
+              duration: (item.live || item.durationFormatted === 'LIVE' || /\b(LIVE\s+STREAMING|SIARAN\s+LANGSUNG|24\s*JAM)\b/i.test(item.title || '')) ? 'LIVE' : (item.durationFormatted || '10:00'),
               category: 'Pencarian YouTube',
               tags: [item.channel?.name || 'YouTube', 'Video', 'Pencarian'],
               commentsCount: Math.floor((item.views || 40000) * 0.002) || 45,
+              isLive: Boolean(item.live || item.durationFormatted === 'LIVE' || /\b(LIVE\s+STREAMING|SIARAN\s+LANGSUNG|24\s*JAM)\b/i.test(item.title || '')),
             });
           }
         }
