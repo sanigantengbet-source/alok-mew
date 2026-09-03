@@ -1,12 +1,108 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CheckCircle2, Clock, Share2, MoreVertical, Play, ListPlus } from 'lucide-react';
 import { Video } from '@/types';
 import { useApp } from '@/context/AppContext';
 import { useDeArrow } from '@/hooks/useDeArrow';
 import { formatCompactViews } from '@/lib/youtube-views';
 import { SmoothThumbnail } from './SmoothThumbnail';
+
+const liveStartTimeCache = new Map<string, number>();
+
+function parseLiveStartTime(uploadedAt: string | undefined, videoId: string): number {
+  const now = Date.now();
+  if (!uploadedAt) return now - 35000;
+
+  const lower = uploadedAt.toLowerCase();
+
+  // Check seconds
+  const secMatch = lower.match(/(\d+)\s*(detik|seconds?|secs?)/);
+  if (secMatch) {
+    return now - parseInt(secMatch[1], 10) * 1000;
+  }
+
+  // Check minutes
+  const minMatch = lower.match(/(\d+)\s*(menit|minutes?|mins?)/);
+  if (minMatch) {
+    return now - parseInt(minMatch[1], 10) * 60 * 1000;
+  }
+
+  // Check hours
+  const hrMatch = lower.match(/(\d+)\s*(jam|hours?|hrs?)/);
+  if (hrMatch) {
+    return now - parseInt(hrMatch[1], 10) * 3600 * 1000;
+  }
+
+  // Check days
+  const dayMatch = lower.match(/(\d+)\s*(hari|days?)/);
+  if (dayMatch) {
+    return now - parseInt(dayMatch[1], 10) * 86400 * 1000;
+  }
+
+  // For streams marked "Baru saja", "Live sekarang", "Streaming sekarang"
+  let hash = 0;
+  for (let i = 0; i < videoId.length; i++) {
+    hash = (hash << 5) - hash + videoId.charCodeAt(i);
+    hash |= 0;
+  }
+  const initialOffsetSeconds = 15 + Math.abs(hash % 35);
+  return now - initialOffsetSeconds * 1000;
+}
+
+function getLiveStartTime(videoId: string, uploadedAt?: string): number {
+  if (liveStartTimeCache.has(videoId)) {
+    return liveStartTimeCache.get(videoId)!;
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = sessionStorage.getItem(`nexttube_live_start_${videoId}`);
+      if (stored) {
+        const val = parseInt(stored, 10);
+        if (!isNaN(val) && val > 0 && val <= Date.now()) {
+          liveStartTimeCache.set(videoId, val);
+          return val;
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const calculated = parseLiveStartTime(uploadedAt, videoId);
+  liveStartTimeCache.set(videoId, calculated);
+  if (typeof window !== 'undefined') {
+    try {
+      sessionStorage.setItem(`nexttube_live_start_${videoId}`, calculated.toString());
+    } catch {
+      // ignore
+    }
+  }
+  return calculated;
+}
+
+function formatLiveElapsedTime(elapsedSeconds: number): string {
+  if (elapsedSeconds < 60) {
+    return `Dimulai ${Math.max(1, elapsedSeconds)} detik yang lalu`;
+  }
+  const minutes = Math.floor(elapsedSeconds / 60);
+  const remSeconds = elapsedSeconds % 60;
+  if (minutes < 60) {
+    return remSeconds > 0
+      ? `Dimulai ${minutes} menit ${remSeconds} detik yang lalu`
+      : `Dimulai ${minutes} menit yang lalu`;
+  }
+  const hours = Math.floor(minutes / 60);
+  const remMinutes = minutes % 60;
+  if (hours < 24) {
+    return remMinutes > 0
+      ? `Dimulai ${hours} jam ${remMinutes} menit yang lalu`
+      : `Dimulai ${hours} jam yang lalu`;
+  }
+  const days = Math.floor(hours / 24);
+  return `Dimulai ${days} hari yang lalu`;
+}
 
 interface VideoCardProps {
   video: Video;
@@ -27,6 +123,44 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isWatchLater = watchLaterIds.includes(video.id);
   const isLiked = likedVideoIds.includes(video.id);
+
+  const isLive = Boolean(
+    video.isLive ||
+    video.duration?.toUpperCase() === 'LIVE' ||
+    (typeof video.title === 'string' &&
+      (/\b(LIVE\s+STREAMING|SIARAN\s+LANGSUNG|24\s*JAM\s+NONSTOP)\b/i.test(video.title) ||
+       (/(?:^|\s|🔴)LIVE\b/i.test(video.title) &&
+        (video.duration === '10:00' ||
+         video.duration === '0:00' ||
+         !video.duration ||
+         video.uploadedAt?.toLowerCase().includes('baru saja') ||
+         video.uploadedAt?.toLowerCase().includes('sekarang') ||
+         video.uploadedAt?.toLowerCase().includes('live')) &&
+        !video.uploadedAt?.toLowerCase().includes('yang lalu')
+       ))
+    )
+  );
+
+  const [liveElapsedText, setLiveElapsedText] = useState<string>(() => {
+    if (!isLive) return '';
+    const startTime = getLiveStartTime(video.id, video.uploadedAt);
+    const elapsed = Math.max(0, Math.floor((Date.now() - startTime) / 1000));
+    return formatLiveElapsedTime(elapsed);
+  });
+
+  useEffect(() => {
+    if (!isLive) return;
+
+    const startTime = getLiveStartTime(video.id, video.uploadedAt);
+    const update = () => {
+      const elapsed = Math.max(0, Math.floor((Date.now() - startTime) / 1000));
+      setLiveElapsedText(formatLiveElapsedTime(elapsed));
+    };
+
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [isLive, video.id, video.uploadedAt]);
 
   const formatViews = (views: number): string => {
     return formatCompactViews(views);
@@ -57,8 +191,8 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
           </div>
         </div>
 
-        {/* Live / Replay Badge */}
-        {video.isLive ? (
+        {/* Single Live Badge di pojok kiri atas */}
+        {isLive ? (
           <div className="absolute top-2 left-2 px-2 py-0.5 bg-red-600 text-white text-[10px] font-extrabold uppercase rounded-md tracking-wider flex items-center gap-1 shadow-md animate-pulse">
             <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
             <span>LIVE</span>
@@ -70,10 +204,12 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
           </div>
         ) : null}
 
-        {/* Duration Badge */}
-        <div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/80 backdrop-blur-xs text-white text-[11px] font-semibold rounded-md tracking-tight">
-          {video.isLive ? 'LIVE' : video.duration}
-        </div>
+        {/* Duration Badge (hanya saat BUKAN live; jika live badge satu saja di pojok kiri atas) */}
+        {!isLive && video.duration && (
+          <div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/80 backdrop-blur-xs text-white text-[11px] font-semibold rounded-md tracking-tight">
+            {video.duration}
+          </div>
+        )}
 
         {/* Quick action buttons on top right of thumbnail */}
         <div className="absolute top-2 right-2 flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -156,12 +292,14 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
           </div>
 
           <div
-            className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 mt-0.5 cursor-pointer"
+            className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 mt-0.5 cursor-pointer flex-wrap"
             onClick={() => playVideoById(video.id, video)}
           >
             <span>{formatViews(video.views)} views</span>
             <span>•</span>
-            <span>{video.uploadedAt}</span>
+            <span className={isLive ? 'text-red-600 dark:text-red-400 font-medium' : ''}>
+              {isLive ? (liveElapsedText || 'Baru saja') : video.uploadedAt}
+            </span>
           </div>
         </div>
 
