@@ -137,6 +137,13 @@ export async function GET(req: NextRequest) {
           .map((item) => {
             const videoId = item.id!;
             const views = typeof item.views === 'number' ? item.views : 350000;
+            const isLive = Boolean(
+              item.live ||
+              item.durationFormatted === 'LIVE' ||
+              (!item.durationFormatted && /live/i.test(item.title || '')) ||
+              (/\b(LIVE\s+STREAMING|SIARAN\s+LANGSUNG|24\s*JAM\s+NONSTOP)\b/i.test(item.title || '')) ||
+              (/(?:^|\s|🔴)LIVE\b/i.test(item.title || '') && (!item.duration || item.duration === 0 || item.durationFormatted === '0:00'))
+            );
             return {
               id: `yt-${videoId}`,
               youtubeId: videoId,
@@ -153,11 +160,12 @@ export async function GET(req: NextRequest) {
               views,
               likes: Math.round(views * 0.045) || 12000,
               dislikes: 12,
-              uploadedAt: item.uploadedAt || '1 minggu yang lalu',
-              duration: item.durationFormatted || '10:00',
+              uploadedAt: item.uploadedAt || (isLive ? 'Baru saja' : '1 minggu yang lalu'),
+              duration: isLive ? 'LIVE' : (item.durationFormatted || '10:00'),
               category: category || 'Trending',
               tags: [category, item.channel?.name || 'Kreator', 'Trending', 'Viral'],
               commentsCount: Math.round(views * 0.003) || 450,
+              isLive,
             };
           });
       } catch {
