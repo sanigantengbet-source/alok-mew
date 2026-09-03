@@ -50,6 +50,7 @@ interface InnerTubeSearchResult {
   category: string;
   tags: string[];
   commentsCount: number;
+  isLive?: boolean;
 }
 
 /**
@@ -125,10 +126,32 @@ export async function searchViaInnerTube(
             : '') ||
           'Baru saja';
 
-        const duration =
-          v.lengthText?.simpleText ||
-          (Array.isArray(v.lengthText?.runs) ? v.lengthText.runs.map((r: any) => r.text).join('') : '') ||
-          '10:00';
+        const hasLiveBadge =
+          v.badges?.some((b: any) => {
+            const label = b?.metadataBadgeRenderer?.label || b?.metadataBadgeRenderer?.style || '';
+            return /live/i.test(label);
+          }) ||
+          v.thumbnailOverlays?.some((o: any) => {
+            const style = o?.thumbnailOverlayTimeStatusRenderer?.style || '';
+            const text =
+              o?.thumbnailOverlayTimeStatusRenderer?.text?.runs?.[0]?.text ||
+              o?.thumbnailOverlayTimeStatusRenderer?.text?.simpleText ||
+              '';
+            return /live/i.test(style) || /live/i.test(text);
+          });
+
+        const isLive = Boolean(
+          hasLiveBadge ||
+          (!v.lengthText &&
+            (/\b(LIVE\s+STREAMING|SIARAN\s+LANGSUNG|24\s*JAM\s+NONSTOP)\b/i.test(title) ||
+             /(?:^|\s|🔴)LIVE\b/i.test(title)))
+        );
+
+        const duration = isLive
+          ? 'LIVE'
+          : v.lengthText?.simpleText ||
+            (Array.isArray(v.lengthText?.runs) ? v.lengthText.runs.map((r: any) => r.text).join('') : '') ||
+            '10:00';
 
         const thumbs = v.thumbnail?.thumbnails || [];
         const thumb =
@@ -162,6 +185,7 @@ export async function searchViaInnerTube(
           category,
           tags: [channelTitle, category, 'Trending', 'Viral'],
           commentsCount: Math.round(numericViews * 0.003) || 120,
+          isLive,
         });
       }
 
