@@ -57,9 +57,15 @@ const RelatedVideoRow: React.FC<{
             }
           }}
         />
-        <div className="absolute bottom-1 right-1 px-1 py-0.2 bg-black/80 text-white text-[10px] font-semibold rounded-sm">
-          {video.duration}
-        </div>
+        {video.isLive || video.duration?.toUpperCase() === 'LIVE' || (typeof video.title === 'string' && /\b(LIVE\s+STREAMING|SIARAN\s+LANGSUNG|24\s*JAM\s+NONSTOP)\b/i.test(video.title)) ? (
+          <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-red-600 text-white text-[9px] font-bold rounded-xs tracking-wider uppercase shadow-xs">
+            LIVE
+          </div>
+        ) : (
+          <div className="absolute bottom-1 right-1 px-1 py-0.2 bg-black/80 text-white text-[10px] font-semibold rounded-sm">
+            {video.duration}
+          </div>
+        )}
       </div>
 
       {/* Details */}
